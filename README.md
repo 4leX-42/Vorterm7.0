@@ -1,76 +1,67 @@
-# TERMIX `v2.1`
-> *One script. Full PowerShell environment. Zero manual setup.*
+# ⚡ TERMIX v2.1
 
-```
-config → modules → packages → ready
-```
+> One script. Full PowerShell environment. Zero manual setup.
 
----
-
-## WHAT IT DOES
-
-Ejecuta `INSTALAR.bat` y el sistema se configura solo:
-
-- **Execution Policy** — `RemoteSigned` en `CurrentUser`, fallback a `Process` si hay GPO
-- **`$PROFILE` generado** para PS7 y PS5.1 — backup automático del anterior
-- **Módulos** — PSReadLine `2.3.6+`, Terminal-Icons, posh-git
-- **Paquetes via winget** — Git, Python 3.12, .NET SDK 8, Windows Terminal, JetBrainsMono Nerd Font
-- **PS7** — se instala solo si no está presente en el sistema
+Windows 10/11 | PowerShell 7+ | MIT License
 
 ---
 
-## PROFILE / RUNTIME
+## 📦 ¿Qué hace?
 
-Lo que carga cada vez que abres una terminal:
+Ejecuta INSTALAR.bat y el sistema se configura automáticamente:
 
-```
-PSReadLine     historial incremental · predicción · ListView · atajos ↑↓
-posh-git       rama actual en el prompt  (solo si git.exe existe)
-Terminal-Icons iconos en ls/dir
-```
+- Execution Policy -> RemoteSigned en CurrentUser (fallback Process si hay GPO)
+- Perfil ($PROFILE) -> Generado para PS7 y PS5.1 con backup automático del anterior
+- Módulos esenciales -> PSReadLine 2.3.6+, Terminal-Icons, posh-git
+- Paquetes (winget) -> Git, Python 3.12, .NET SDK 8, Windows Terminal, JetBrainsMono Nerd Font
+- PowerShell 7 -> Instalado automáticamente si no está presente
 
-```
-ExchangeOnlineManagement  →  lazy load  (se importa al primer Connect-ExchangeOnline)
-Microsoft.Graph           →  lazy load  (se importa al primer Connect-MgGraph)
-```
+---
 
-> Los módulos pesados no bloquean el arranque.
+## 🚀 Carga del perfil
 
-**Prompt:**
-```
+Cada vez que abres una terminal se carga esto:
+
+PSReadLine     -> historial incremental, predicción, ListView, atajos ↑↓
+posh-git       -> muestra la rama actual en el prompt (solo si git.exe existe)
+Terminal-Icons -> iconos en ls/dir
+
+Prompt resultante:
+
 [22:47] C:\proyectos  [main] >
-```
 
 ---
 
-## DEPLOY
+## 🛠️ Despliegue
 
-```bat
-INSTALAR.bat          # doble clic — se auto-eleva si necesita admin
-```
-
-```powershell
-.\setup_terminal.ps1 -StartPath "C:\dev"   # directorio de inicio fijo
-.\setup_terminal.ps1 -SkipInstalls         # solo profile + módulos, sin winget
-```
+INSTALAR.bat                           -> Doble clic — se auto-eleva si requiere administrador
+.\setup_terminal.ps1 -StartPath "C:\dev" -> Fija directorio de inicio
+.\setup_terminal.ps1 -SkipInstalls     -> Solo perfil + módulos, sin winget
 
 ---
 
-## POST-INSTALL
+## ⚙️ Configuración post-instalación (Windows Terminal)
 
-Windows Terminal → Configuración → PowerShell → **Línea de comandos**:
-```
-pwsh -NoLogo -NoProfileLoadTime
-```
-Windows Terminal → PowerShell → Apariencia → **Fuente**:
-```
-JetBrainsMono Nerd Font
-```
+1. Abre Windows Terminal
+2. Haz clic en la flecha hacia abajo (∨) en la barra superior
+3. Ve a Configuración
+4. En la lista de perfiles, selecciona PowerShell.
+5. Busca el campo Línea de comandos y pega:
+   pwsh -NoLogo -NoProfileLoadTime
+6. Guarda los cambios
+
+Opcional – fuente recomendada:
+En el mismo perfil, ve a Apariencia -> Fuente -> JetBrainsMono Nerd Font
 
 ---
 
-## NOTES
+## ♻️ Idempotencia
 
-- Idempotente — seguro de relanzar, nunca reinstala lo que ya existe
-- Backup con timestamp antes de sobreescribir el `$PROFILE`
-- Requiere Windows 10/11 · winget · Admin
+El script es seguro de relanzar:
+- No reinstala lo que ya existe
+- Crea un backup con timestamp antes de sobrescribir $PROFILE
+- Requiere Windows 10/11, winget y permisos de administrador
+
+---
+
+Hecho con 🧠 para que no tengas que hacer nada
