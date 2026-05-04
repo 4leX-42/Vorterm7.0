@@ -1,7 +1,8 @@
 [CmdletBinding()]
 param(
     [switch]$SkipInstalls,
-    [string]$StartPath
+    [string]$StartPath,
+    [switch]$Unattended
 )
 
 $ErrorActionPreference = 'Stop'
@@ -70,21 +71,58 @@ else               { Write-Info "PowerShell 7 no detectado (se instalará al fin
 Write-Step "Directorio de inicio del terminal"
 
 $defaultPath = Join-Path $env:USERPROFILE 'Documents'
+
+# Detección de modo no-interactivo (stdin redirigido, sin host UI, o flag explícito)
+$nonInteractive = $Unattended -or `
+                  [Console]::IsInputRedirected -or `
+                  -not [Environment]::UserInteractive
+
+function Resolve-WorkDir {
+    param([string]$Candidate, [string]$Fallback)
+    if ([string]::IsNullOrWhiteSpace($Candidate)) { return $Fallback }
+    $c = $Candidate.Trim().Trim('"').Trim("'")
+    # Validar caracteres ilegales en ruta
+    $invalid = [IO.Path]::GetInvalidPathChars()
+    if ($c.IndexOfAny($invalid) -ge 0) { return $null }
+    return $c
+}
+
 if ($StartPath) {
-    $workDir = $StartPath.Trim()
+    $workDir = Resolve-WorkDir -Candidate $StartPath -Fallback $defaultPath
+    if (-not $workDir) {
+        Write-Warn2 "Ruta -StartPath no válida. Usando $defaultPath."
+        $workDir = $defaultPath
+    }
+} elseif ($nonInteractive) {
+    Write-Info "Modo desatendido, usando ruta por defecto: $defaultPath"
+    $workDir = $defaultPath
 } else {
     Write-Host "    Deja vacío para usar: $defaultPath" -ForegroundColor DarkGray
-    $userInput = Read-Host "    Ruta"
-    $workDir = if ([string]::IsNullOrWhiteSpace($userInput)) { $defaultPath } else { $userInput.Trim() }
+    $attempts = 0
+    do {
+        $userInput = Read-Host "    Ruta"
+        $workDir = Resolve-WorkDir -Candidate $userInput -Fallback $defaultPath
+        if (-not $workDir) {
+            Write-Warn2 "Ruta no válida. Inténtalo de nuevo o deja vacío."
+            $attempts++
+        }
+    } while (-not $workDir -and $attempts -lt 3)
+    if (-not $workDir) {
+        Write-Warn2 "Demasiados intentos. Usando $defaultPath."
+        $workDir = $defaultPath
+    }
 }
 
 if (-not (Test-Path $workDir)) {
     try {
-        New-Item -ItemType Directory -Path $workDir -Force | Out-Null
+        New-Item -ItemType Directory -Path $workDir -Force -ErrorAction Stop | Out-Null
         Write-OK "Carpeta creada: $workDir"
     } catch {
-        Write-Warn2 "No se pudo crear '$workDir'. Usando $defaultPath."
+        Write-Warn2 "No se pudo crear '$workDir' ($($_.Exception.Message)). Usando $defaultPath."
         $workDir = $defaultPath
+        if (-not (Test-Path $workDir)) {
+            New-Item -ItemType Directory -Path $workDir -Force | Out-Null
+        }
     }
 } else {
     Write-OK "Directorio: $workDir"
@@ -159,9 +197,15 @@ foreach (`$p in @('C:\Program Files\Git\bin', 'C:\Program Files\Git\cmd')) {
 Import-Module PSReadLine -ErrorAction SilentlyContinue
 if (Get-Module PSReadLine) {
     `$psrlVer = (Get-Module PSReadLine).Version
-    Set-PSReadLineOption -HistorySaveStyle SaveIncrementally `
-        -MaximumHistoryCount 20000 -BellStyle None -EditMode Windows `
-        -PredictionSource History -ErrorAction SilentlyContinue
+    `$psrlOpts = @{
+        HistorySaveStyle    = 'SaveIncrementally'
+        MaximumHistoryCount = 20000
+        BellStyle           = 'None'
+        EditMode            = 'Windows'
+        ErrorAction         = 'SilentlyContinue'
+    }
+    if (`$psrlVer -ge [version]'2.1.0') { `$psrlOpts.PredictionSource = 'History' }
+    Set-PSReadLineOption @psrlOpts
     if (`$psrlVer -ge [version]'2.2.0') {
         Set-PSReadLineOption -PredictionViewStyle ListView -ErrorAction SilentlyContinue
     }
