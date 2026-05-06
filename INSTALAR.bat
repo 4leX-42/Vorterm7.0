@@ -1,6 +1,6 @@
 @echo off
 :: ============================================================
-::  TERMIX  v3.1  -  professional terminal installer
+::  Vorterm 7.0
 ::  Doble click. Eso es todo.
 :: ============================================================
 

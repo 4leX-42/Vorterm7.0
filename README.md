@@ -1,4 +1,4 @@
-# Vorterm7.0
+# TERMIX v3.1
 
 Professional terminal installer for Windows. Single double-click.
 

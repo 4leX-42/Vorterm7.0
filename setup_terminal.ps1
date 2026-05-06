@@ -1,5 +1,5 @@
 # =============================================================
-#  TERMIX  v3.1 - professional terminal installer (WPF GUI)
+#  Vorterm 7.0  (WPF GUI)
 #  Run via INSTALAR.bat (powershell.exe -STA -WindowStyle Hidden)
 # =============================================================
 
@@ -17,60 +17,77 @@ try {
 
 Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, System.Windows.Forms
 
+# Process suspend/resume P/Invoke (used for Pause button during install)
+if (-not ('Vorterm.ProcCtl' -as [type])) {
+    Add-Type -Namespace Vorterm -Name ProcCtl -MemberDefinition @'
+[System.Runtime.InteropServices.DllImport("ntdll.dll")]
+public static extern int NtSuspendProcess(System.IntPtr handle);
+[System.Runtime.InteropServices.DllImport("ntdll.dll")]
+public static extern int NtResumeProcess(System.IntPtr handle);
+'@
+}
+
 # ------ XAML ------------------------------------------------
 [xml]$xaml = @'
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="TERMIX  -  Terminal Installer"
-        Height="780" Width="1100"
+        Title="Vorterm 7.0"
+        Height="940" Width="1700"
+        MinHeight="800" MinWidth="980"
         WindowStartupLocation="CenterScreen"
-        Background="#0F1419"
-        FontFamily="Segoe UI"
+        Background="#050506"
+        FontFamily="Inter, Segoe UI"
         FontSize="14"
-        Foreground="#E5E9F0"
+        Foreground="#e8e8e8"
         ResizeMode="CanResize">
   <Window.Resources>
-    <SolidColorBrush x:Key="Accent"   Color="#4FC3F7"/>
-    <SolidColorBrush x:Key="AccentHi" Color="#81D4FA"/>
-    <SolidColorBrush x:Key="Panel"    Color="#161B22"/>
-    <SolidColorBrush x:Key="PanelDeep" Color="#0B0E13"/>
-    <SolidColorBrush x:Key="Border1"  Color="#2D3743"/>
-    <SolidColorBrush x:Key="Muted"    Color="#8B95A8"/>
-    <SolidColorBrush x:Key="Ok"       Color="#56D364"/>
-    <SolidColorBrush x:Key="Warn"     Color="#DBAB0A"/>
-    <SolidColorBrush x:Key="Err"      Color="#F85149"/>
+    <SolidColorBrush x:Key="Bg"          Color="#050506"/>
+    <SolidColorBrush x:Key="Surface"     Color="#0c0d0f"/>
+    <SolidColorBrush x:Key="Surface2"    Color="#121316"/>
+    <SolidColorBrush x:Key="Border1"     Color="#1f2024"/>
+    <SolidColorBrush x:Key="BorderStrong" Color="#3a3b40"/>
+    <SolidColorBrush x:Key="Text"        Color="#e8e8e8"/>
+    <SolidColorBrush x:Key="Muted"       Color="#6a6c70"/>
+    <SolidColorBrush x:Key="Dim"         Color="#2a2b2f"/>
+    <SolidColorBrush x:Key="Gold"        Color="#fcee0a"/>
+    <SolidColorBrush x:Key="GoldHi"      Color="#fff86b"/>
+    <SolidColorBrush x:Key="GoldDim"     Color="#8a8104"/>
+    <SolidColorBrush x:Key="GoldFaint"   Color="#3a3601"/>
+    <SolidColorBrush x:Key="Danger"      Color="#e10024"/>
 
     <Style TargetType="TextBlock">
-      <Setter Property="Foreground" Value="#E5E9F0"/>
+      <Setter Property="Foreground" Value="#e8e8e8"/>
       <Setter Property="FontSize" Value="14"/>
     </Style>
 
     <Style TargetType="CheckBox">
-      <Setter Property="Foreground" Value="#E5E9F0"/>
-      <Setter Property="FontSize" Value="14"/>
-      <Setter Property="Margin" Value="0,6,24,6"/>
+      <Setter Property="Foreground" Value="#e8e8e8"/>
+      <Setter Property="FontSize" Value="15"/>
+      <Setter Property="Margin" Value="0,8,14,8"/>
       <Setter Property="VerticalContentAlignment" Value="Center"/>
+      <Setter Property="FontFamily" Value="Bahnschrift Light, Bahnschrift, Segoe UI Light"/>
     </Style>
 
     <Style TargetType="TextBox">
-      <Setter Property="Background" Value="{StaticResource PanelDeep}"/>
-      <Setter Property="Foreground" Value="#E5E9F0"/>
-      <Setter Property="CaretBrush" Value="{StaticResource Accent}"/>
-      <Setter Property="BorderBrush" Value="{StaticResource Border1}"/>
-      <Setter Property="BorderThickness" Value="1"/>
-      <Setter Property="Padding" Value="10,8"/>
-      <Setter Property="FontFamily" Value="Cascadia Mono, Consolas"/>
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="Foreground" Value="#e8e8e8"/>
+      <Setter Property="CaretBrush" Value="{StaticResource Gold}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource BorderStrong}"/>
+      <Setter Property="BorderThickness" Value="0,0,0,1"/>
+      <Setter Property="Padding" Value="2,9"/>
+      <Setter Property="FontFamily" Value="JetBrains Mono, Cascadia Mono, Consolas"/>
       <Setter Property="FontSize" Value="14"/>
     </Style>
 
     <Style x:Key="GhostButton" TargetType="Button">
       <Setter Property="Background" Value="Transparent"/>
-      <Setter Property="Foreground" Value="{StaticResource Accent}"/>
-      <Setter Property="BorderBrush" Value="{StaticResource Border1}"/>
+      <Setter Property="Foreground" Value="{StaticResource Gold}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource GoldFaint}"/>
       <Setter Property="BorderThickness" Value="1"/>
-      <Setter Property="Padding" Value="16,8"/>
-      <Setter Property="FontWeight" Value="SemiBold"/>
-      <Setter Property="FontSize" Value="14"/>
+      <Setter Property="Padding" Value="26,11"/>
+      <Setter Property="FontWeight" Value="Normal"/>
+      <Setter Property="FontSize" Value="13"/>
+      <Setter Property="FontFamily" Value="JetBrains Mono, Cascadia Mono, Consolas"/>
       <Setter Property="Cursor" Value="Hand"/>
       <Setter Property="Template">
         <Setter.Value>
@@ -85,11 +102,7 @@ Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, Sys
             </Border>
             <ControlTemplate.Triggers>
               <Trigger Property="IsMouseOver" Value="True">
-                <Setter TargetName="bd" Property="Background" Value="#1A2733"/>
-                <Setter TargetName="bd" Property="BorderBrush" Value="{StaticResource Accent}"/>
-              </Trigger>
-              <Trigger Property="IsPressed" Value="True">
-                <Setter TargetName="bd" Property="Background" Value="#0E1620"/>
+                <Setter TargetName="bd" Property="BorderBrush" Value="{StaticResource Gold}"/>
               </Trigger>
               <Trigger Property="IsEnabled" Value="False">
                 <Setter TargetName="bd" Property="Opacity" Value="0.4"/>
@@ -101,33 +114,33 @@ Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, Sys
     </Style>
 
     <Style x:Key="WarningButton" TargetType="Button" BasedOn="{StaticResource GhostButton}">
-      <Setter Property="Foreground" Value="#F0883E"/>
-      <Setter Property="BorderBrush" Value="#F0883E"/>
+      <Setter Property="Foreground" Value="{StaticResource Danger}"/>
+      <Setter Property="BorderBrush" Value="#7a0015"/>
     </Style>
 
     <Style x:Key="PrimaryButton" TargetType="Button" BasedOn="{StaticResource GhostButton}">
-      <Setter Property="Background" Value="{StaticResource Accent}"/>
-      <Setter Property="Foreground" Value="#0B0E13"/>
-      <Setter Property="BorderBrush" Value="{StaticResource Accent}"/>
-      <Setter Property="FontWeight" Value="Bold"/>
-      <Setter Property="FontSize" Value="15"/>
+      <Setter Property="Foreground" Value="{StaticResource Gold}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource Gold}"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="FontSize" Value="13"/>
+      <Setter Property="Padding" Value="42,11"/>
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="Button">
             <Border x:Name="bd"
-                    Background="{TemplateBinding Background}"
+                    Background="Transparent"
                     BorderBrush="{TemplateBinding BorderBrush}"
                     BorderThickness="{TemplateBinding BorderThickness}">
+              <Border.Effect>
+                <DropShadowEffect x:Name="glow" Color="#fcee0a" BlurRadius="14" ShadowDepth="0" Opacity="0.7"/>
+              </Border.Effect>
               <ContentPresenter HorizontalAlignment="Center"
                                 VerticalAlignment="Center"
                                 Margin="{TemplateBinding Padding}"/>
             </Border>
             <ControlTemplate.Triggers>
               <Trigger Property="IsMouseOver" Value="True">
-                <Setter TargetName="bd" Property="Background" Value="{StaticResource AccentHi}"/>
-              </Trigger>
-              <Trigger Property="IsPressed" Value="True">
-                <Setter TargetName="bd" Property="Background" Value="#3DA9D9"/>
+                <Setter TargetName="bd" Property="BorderBrush" Value="{StaticResource GoldHi}"/>
               </Trigger>
               <Trigger Property="IsEnabled" Value="False">
                 <Setter TargetName="bd" Property="Opacity" Value="0.4"/>
@@ -139,148 +152,310 @@ Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, Sys
     </Style>
 
     <Style TargetType="ProgressBar">
-      <Setter Property="Background" Value="{StaticResource PanelDeep}"/>
-      <Setter Property="Foreground" Value="{StaticResource Accent}"/>
-      <Setter Property="BorderBrush" Value="{StaticResource Border1}"/>
-      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="Background" Value="{StaticResource Dim}"/>
+      <Setter Property="Foreground" Value="{StaticResource Gold}"/>
+      <Setter Property="BorderBrush" Value="Transparent"/>
+      <Setter Property="BorderThickness" Value="0"/>
+    </Style>
+
+    <Style x:Key="RomanLabel" TargetType="TextBlock">
+      <Setter Property="Foreground" Value="{StaticResource Gold}"/>
+      <Setter Property="FontFamily" Value="JetBrains Mono, Cascadia Mono, Consolas"/>
+      <Setter Property="FontSize" Value="13"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="Margin" Value="0,0,0,0"/>
+    </Style>
+
+    <Style x:Key="SectionRule" TargetType="Border">
+      <Setter Property="Height" Value="1"/>
+      <Setter Property="Background" Value="{StaticResource GoldFaint}"/>
+      <Setter Property="HorizontalAlignment" Value="Stretch"/>
+      <Setter Property="Margin" Value="0,8,0,14"/>
+    </Style>
+
+    <Style x:Key="PathLabel" TargetType="TextBlock">
+      <Setter Property="Foreground" Value="{StaticResource Gold}"/>
+      <Setter Property="FontFamily" Value="JetBrains Mono, Cascadia Mono, Consolas"/>
+      <Setter Property="FontSize" Value="11"/>
+      <Setter Property="Margin" Value="0,8,0,2"/>
+    </Style>
+
+    <Style x:Key="PathValue" TargetType="TextBlock">
+      <Setter Property="FontFamily" Value="JetBrains Mono, Cascadia Mono, Consolas"/>
+      <Setter Property="FontSize" Value="12"/>
+      <Setter Property="TextWrapping" Value="Wrap"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Margin" Value="0,0,0,0"/>
+    </Style>
+
+    <!-- Tron-style corner brackets (4 small L-shapes around content) -->
+    <Style x:Key="CornerTL" TargetType="Border">
+      <Setter Property="Width" Value="12"/>
+      <Setter Property="Height" Value="12"/>
+      <Setter Property="HorizontalAlignment" Value="Left"/>
+      <Setter Property="VerticalAlignment" Value="Top"/>
+      <Setter Property="BorderBrush" Value="{StaticResource Gold}"/>
+      <Setter Property="BorderThickness" Value="1,1,0,0"/>
+    </Style>
+    <Style x:Key="CornerTR" TargetType="Border">
+      <Setter Property="Width" Value="12"/>
+      <Setter Property="Height" Value="12"/>
+      <Setter Property="HorizontalAlignment" Value="Right"/>
+      <Setter Property="VerticalAlignment" Value="Top"/>
+      <Setter Property="BorderBrush" Value="{StaticResource Gold}"/>
+      <Setter Property="BorderThickness" Value="0,1,1,0"/>
+    </Style>
+    <Style x:Key="CornerBL" TargetType="Border">
+      <Setter Property="Width" Value="12"/>
+      <Setter Property="Height" Value="12"/>
+      <Setter Property="HorizontalAlignment" Value="Left"/>
+      <Setter Property="VerticalAlignment" Value="Bottom"/>
+      <Setter Property="BorderBrush" Value="{StaticResource Gold}"/>
+      <Setter Property="BorderThickness" Value="1,0,0,1"/>
+    </Style>
+    <Style x:Key="CornerBR" TargetType="Border">
+      <Setter Property="Width" Value="12"/>
+      <Setter Property="Height" Value="12"/>
+      <Setter Property="HorizontalAlignment" Value="Right"/>
+      <Setter Property="VerticalAlignment" Value="Bottom"/>
+      <Setter Property="BorderBrush" Value="{StaticResource Gold}"/>
+      <Setter Property="BorderThickness" Value="0,0,1,1"/>
+    </Style>
+    <!-- Custom dark/yellow ScrollBar -->
+    <Style x:Key="VtScrollThumb" TargetType="{x:Type Thumb}">
+      <Setter Property="OverridesDefaultStyle" Value="True"/>
+      <Setter Property="IsTabStop" Value="False"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="{x:Type Thumb}">
+            <Border x:Name="th" Background="#8a8104" Margin="2,0" CornerRadius="0"/>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="th" Property="Background" Value="#fcee0a"/>
+              </Trigger>
+              <Trigger Property="IsDragging" Value="True">
+                <Setter TargetName="th" Property="Background" Value="#fcee0a"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <Style x:Key="VtScrollPage" TargetType="{x:Type RepeatButton}">
+      <Setter Property="OverridesDefaultStyle" Value="True"/>
+      <Setter Property="Focusable" Value="False"/>
+      <Setter Property="IsTabStop" Value="False"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="{x:Type RepeatButton}">
+            <Border Background="Transparent"/>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <Style TargetType="{x:Type ScrollBar}">
+      <Setter Property="Background" Value="#08090b"/>
+      <Setter Property="Width" Value="10"/>
+      <Setter Property="MinWidth" Value="10"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="{x:Type ScrollBar}">
+            <Grid Background="{TemplateBinding Background}">
+              <Track Name="PART_Track" IsDirectionReversed="True">
+                <Track.DecreaseRepeatButton>
+                  <RepeatButton Style="{StaticResource VtScrollPage}" Command="ScrollBar.PageUpCommand"/>
+                </Track.DecreaseRepeatButton>
+                <Track.Thumb>
+                  <Thumb Style="{StaticResource VtScrollThumb}"/>
+                </Track.Thumb>
+                <Track.IncreaseRepeatButton>
+                  <RepeatButton Style="{StaticResource VtScrollPage}" Command="ScrollBar.PageDownCommand"/>
+                </Track.IncreaseRepeatButton>
+              </Track>
+            </Grid>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+      <Style.Triggers>
+        <Trigger Property="Orientation" Value="Horizontal">
+          <Setter Property="Width" Value="Auto"/>
+          <Setter Property="MinWidth" Value="0"/>
+          <Setter Property="Height" Value="10"/>
+          <Setter Property="MinHeight" Value="10"/>
+          <Setter Property="Template">
+            <Setter.Value>
+              <ControlTemplate TargetType="{x:Type ScrollBar}">
+                <Grid Background="{TemplateBinding Background}">
+                  <Track Name="PART_Track" IsDirectionReversed="False">
+                    <Track.DecreaseRepeatButton>
+                      <RepeatButton Style="{StaticResource VtScrollPage}" Command="ScrollBar.PageLeftCommand"/>
+                    </Track.DecreaseRepeatButton>
+                    <Track.Thumb>
+                      <Thumb Style="{StaticResource VtScrollThumb}"/>
+                    </Track.Thumb>
+                    <Track.IncreaseRepeatButton>
+                      <RepeatButton Style="{StaticResource VtScrollPage}" Command="ScrollBar.PageRightCommand"/>
+                    </Track.IncreaseRepeatButton>
+                  </Track>
+                </Grid>
+              </ControlTemplate>
+            </Setter.Value>
+          </Setter>
+        </Trigger>
+      </Style.Triggers>
     </Style>
   </Window.Resources>
 
-  <Grid Margin="22">
-    <Grid.RowDefinitions>
-      <RowDefinition Height="Auto"/>
-      <RowDefinition Height="Auto"/>
-      <RowDefinition Height="Auto"/>
-      <RowDefinition Height="*"/>
-      <RowDefinition Height="Auto"/>
-      <RowDefinition Height="Auto"/>
-    </Grid.RowDefinitions>
+  <Grid Margin="20">
+    <!-- Outer corner brackets -->
+    <Border Style="{StaticResource CornerTL}"/>
+    <Border Style="{StaticResource CornerTR}"/>
+    <Border Style="{StaticResource CornerBL}"/>
+    <Border Style="{StaticResource CornerBR}"/>
 
-    <!-- HEADER -->
-    <Border Grid.Row="0" Background="{StaticResource Panel}"
-            BorderBrush="{StaticResource Border1}" BorderThickness="1"
-            Padding="22,18">
-      <StackPanel>
-        <StackPanel Orientation="Horizontal">
-          <TextBlock Text="T E R M I X" FontSize="28" FontWeight="Bold"
-                     Foreground="{StaticResource Accent}"/>
-          <TextBlock Text="  /  professional terminal installer"
-                     FontSize="15" Foreground="{StaticResource Muted}"
-                     VerticalAlignment="Bottom" Margin="10,0,0,4"/>
-        </StackPanel>
-        <TextBlock Text="v3.1   PowerShell 7 + Windows Terminal + Nerd Font + Modules"
-                   Foreground="{StaticResource Muted}" FontSize="13" Margin="0,4,0,0"/>
+    <Grid Margin="14">
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto"/>
+        <RowDefinition Height="Auto"/>
+        <RowDefinition Height="Auto"/>
+        <RowDefinition Height="*" MinHeight="200"/>
+        <RowDefinition Height="Auto"/>
+        <RowDefinition Height="Auto"/>
+      </Grid.RowDefinitions>
+
+      <!-- HEADER -->
+      <StackPanel Grid.Row="0" HorizontalAlignment="Center" Margin="0,12,0,18">
+        <TextBlock Text="V O R T E R M"
+                   FontFamily="JetBrains Mono, Cascadia Mono, Consolas"
+                   FontSize="38" FontWeight="Thin"
+                   Foreground="{StaticResource Gold}"
+                   HorizontalAlignment="Center">
+          <TextBlock.Effect>
+            <DropShadowEffect Color="#fcee0a" BlurRadius="22" ShadowDepth="0" Opacity="0.7"/>
+          </TextBlock.Effect>
+        </TextBlock>
+        <TextBlock Text="VII.0"
+                   FontFamily="JetBrains Mono, Cascadia Mono, Consolas"
+                   FontSize="11" Foreground="{StaticResource Muted}"
+                   HorizontalAlignment="Center" Margin="0,4,0,0"/>
       </StackPanel>
-    </Border>
 
-    <!-- PATH -->
-    <Grid Grid.Row="1" Margin="0,18,0,8">
-      <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="Auto"/>
-        <ColumnDefinition Width="*"/>
-        <ColumnDefinition Width="Auto"/>
-      </Grid.ColumnDefinitions>
-      <TextBlock Text="Startup directory"
-                 VerticalAlignment="Center"
-                 Foreground="{StaticResource Accent}"
-                 Margin="2,0,14,0"
-                 FontWeight="SemiBold"
-                 FontSize="14"/>
-      <TextBox x:Name="PathBox" Grid.Column="1"/>
-      <Button x:Name="BrowseBtn" Grid.Column="2"
-              Content="Browse..." Style="{StaticResource GhostButton}"
-              Margin="10,0,0,0"/>
-    </Grid>
-
-    <!-- COMPONENTS -->
-    <Border Grid.Row="2" BorderBrush="{StaticResource Border1}" BorderThickness="1"
-            Padding="18,14" Margin="0,8" Background="{StaticResource Panel}">
-      <StackPanel>
-        <TextBlock Text="Applications (winget)"
-                   Foreground="{StaticResource Accent}"
-                   FontWeight="Bold" Margin="0,0,0,6" FontSize="14"/>
-        <WrapPanel>
-          <CheckBox x:Name="cb_pwsh" Content="PowerShell 7"             IsChecked="True"/>
-          <CheckBox x:Name="cb_git"  Content="Git"                      IsChecked="True"/>
-          <CheckBox x:Name="cb_wt"   Content="Windows Terminal"         IsChecked="True"/>
-          <CheckBox x:Name="cb_font" Content="JetBrainsMono Nerd Font"  IsChecked="True"/>
-          <CheckBox x:Name="cb_omp"  Content="oh-my-posh (prompt theme)" IsChecked="True"/>
-        </WrapPanel>
-
-        <TextBlock Text="PowerShell modules"
-                   Foreground="{StaticResource Accent}"
-                   FontWeight="Bold" Margin="0,14,0,6" FontSize="14"/>
-        <WrapPanel>
-          <CheckBox x:Name="cb_psrl"    Content="PSReadLine 2.3.6"  IsChecked="True"/>
-          <CheckBox x:Name="cb_icons"   Content="Terminal-Icons"    IsChecked="True"/>
-          <CheckBox x:Name="cb_poshgit" Content="posh-git"          IsChecked="True"/>
-        </WrapPanel>
-
-        <TextBlock Text="Configuration"
-                   Foreground="{StaticResource Accent}"
-                   FontWeight="Bold" Margin="0,14,0,6" FontSize="14"/>
-        <WrapPanel>
-          <CheckBox x:Name="cb_profile"  Content="Write PowerShell profile"          IsChecked="True"/>
-          <CheckBox x:Name="cb_wtcfg"    Content="Auto-configure Windows Terminal"   IsChecked="True"/>
-          <CheckBox x:Name="cb_elevate"  Content="Run PowerShell 7 as Administrator" IsChecked="False"/>
-          <CheckBox x:Name="cb_policy"   Content="Set ExecutionPolicy: RemoteSigned" IsChecked="True"/>
-          <CheckBox x:Name="cb_verify"   Content="Verify install (Terminal-Icons / Font)" IsChecked="True"/>
-        </WrapPanel>
-
-        <TextBlock Text="Cleanup / reset"
-                   Foreground="#F0883E"
-                   FontWeight="Bold" Margin="0,14,0,6" FontSize="14"/>
-        <WrapPanel>
-          <CheckBox x:Name="cb_clean_profile" Content="Reset all PowerShell profiles (PS5.1 + PS7, all hosts)" IsChecked="True"/>
-          <CheckBox x:Name="cb_clean_history" Content="Clear PSReadLine history"                                IsChecked="True"/>
-          <CheckBox x:Name="cb_clean_modules" Content="Uninstall terminal/prompt modules (Icons, posh-git, oh-my-posh, ...)" IsChecked="True"/>
-          <CheckBox x:Name="cb_clean_wt"      Content="Reset Windows Terminal settings (restore backup or strip TERMIX keys)" IsChecked="True"/>
-        </WrapPanel>
-      </StackPanel>
-    </Border>
-
-    <!-- LOG -->
-    <Border Grid.Row="3" BorderBrush="{StaticResource Border1}" BorderThickness="1"
-            Background="{StaticResource PanelDeep}" Margin="0,8">
-      <Grid>
-        <Grid.RowDefinitions>
-          <RowDefinition Height="Auto"/>
-          <RowDefinition Height="*"/>
-        </Grid.RowDefinitions>
-        <TextBlock Grid.Row="0" Text="Console output"
-                   Foreground="{StaticResource Accent}"
-                   FontWeight="Bold" Margin="14,10,0,4" FontSize="13"/>
-        <TextBox x:Name="LogBox" Grid.Row="1" IsReadOnly="True" Background="Transparent"
-                 BorderThickness="0" TextWrapping="NoWrap"
-                 FontFamily="Cascadia Mono, Consolas"
-                 FontSize="13"
-                 Foreground="#A8C7E0"
-                 VerticalScrollBarVisibility="Auto"
-                 HorizontalScrollBarVisibility="Auto"
-                 AcceptsReturn="True"/>
+      <!-- PATH -->
+      <Grid Grid.Row="1" Margin="8,4,8,8">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="Auto"/>
+          <ColumnDefinition Width="*"/>
+          <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+        <TextBlock Text="I / STARTUP"
+                   Style="{StaticResource RomanLabel}"
+                   VerticalAlignment="Center" Margin="0,0,18,0"/>
+        <TextBox x:Name="PathBox" Grid.Column="1"/>
+        <Button x:Name="BrowseBtn" Grid.Column="2" Content="BROWSE"
+                Style="{StaticResource GhostButton}" Margin="14,0,0,0"
+                Padding="22,7" FontSize="12"/>
       </Grid>
-    </Border>
 
-    <!-- PROGRESS + STATUS -->
-    <Grid Grid.Row="4" Margin="0,6,0,0">
-      <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="*"/>
-        <ColumnDefinition Width="Auto"/>
-      </Grid.ColumnDefinitions>
-      <ProgressBar x:Name="Progress" Height="22" Minimum="0" Maximum="100"/>
-      <TextBlock x:Name="StatusText" Grid.Column="1" Text="Idle"
-                 Margin="14,0,4,0"
-                 VerticalAlignment="Center"
-                 Foreground="{StaticResource Muted}"
-                 FontWeight="Bold" FontSize="14"/>
+      <!-- CONFIG: 3 columns -->
+      <Grid Grid.Row="2" Margin="8,8,8,8">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*"/>
+          <ColumnDefinition Width="*"/>
+          <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <Grid Grid.Column="0" Margin="0,0,18,0">
+          <StackPanel>
+            <TextBlock Text="II / SETUP" Style="{StaticResource RomanLabel}"/>
+            <Border Style="{StaticResource SectionRule}"/>
+            <CheckBox x:Name="cb_elevate" Content="admin elevation"     IsChecked="True"/>
+            <CheckBox x:Name="cb_vscode"  Content="visual studio code"  IsChecked="False"/>
+            <CheckBox x:Name="cb_neovim"  Content="neovim"              IsChecked="False"/>
+            <CheckBox x:Name="cb_7zip"    Content="7-zip"               IsChecked="False"/>
+            <CheckBox x:Name="cb_github"  Content="github desktop"      IsChecked="False"/>
+            <CheckBox x:Name="cb_wsl"     Content="wsl (linux subsystem)" IsChecked="False"/>
+          </StackPanel>
+        </Grid>
+
+        <Grid Grid.Column="1" Margin="0,0,18,0">
+          <StackPanel>
+            <TextBlock Text="III / RESET" Style="{StaticResource RomanLabel}"
+                       Foreground="{StaticResource Danger}"/>
+            <Border Style="{StaticResource SectionRule}" Background="{StaticResource Danger}"/>
+            <CheckBox x:Name="cb_clean_profile" Content="powershell profiles" IsChecked="True"/>
+            <CheckBox x:Name="cb_clean_history" Content="psreadline history"  IsChecked="True"/>
+            <CheckBox x:Name="cb_clean_modules" Content="terminal modules"    IsChecked="True"/>
+            <CheckBox x:Name="cb_clean_wt"      Content="windows terminal"    IsChecked="True"/>
+          </StackPanel>
+        </Grid>
+
+        <Grid Grid.Column="2">
+          <StackPanel x:Name="PathsPanel">
+            <TextBlock Text="IV / PATHS" Style="{StaticResource RomanLabel}"/>
+            <Border Style="{StaticResource SectionRule}"/>
+          </StackPanel>
+        </Grid>
+      </Grid>
+
+      <!-- CONSOLE -->
+      <Grid Grid.Row="3" Margin="8,8,8,8">
+        <Border Style="{StaticResource CornerTL}"/>
+        <Border Style="{StaticResource CornerTR}"/>
+        <Border Style="{StaticResource CornerBL}"/>
+        <Border Style="{StaticResource CornerBR}"/>
+        <Grid Margin="14,12,14,12">
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+          </Grid.RowDefinitions>
+          <StackPanel Grid.Row="0">
+            <TextBlock Text="V / CONSOLE" Style="{StaticResource RomanLabel}"/>
+            <Border Style="{StaticResource SectionRule}"/>
+          </StackPanel>
+          <TextBox x:Name="LogBox" Grid.Row="1" IsReadOnly="True" Background="Transparent"
+                   BorderThickness="0" TextWrapping="NoWrap"
+                   FontFamily="JetBrains Mono, Cascadia Mono, Consolas"
+                   FontSize="13" Foreground="#fcee0a"
+                   VerticalScrollBarVisibility="Auto"
+                   HorizontalScrollBarVisibility="Auto"
+                   AcceptsReturn="True" Padding="0,4,0,4"/>
+        </Grid>
+      </Grid>
+
+      <!-- PROGRESS + PAUSE + STATUS -->
+      <Grid Grid.Row="4" Margin="8,4,8,0">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*"/>
+          <ColumnDefinition Width="Auto"/>
+          <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+        <ProgressBar x:Name="Progress" Height="2" Minimum="0" Maximum="100"
+                     VerticalAlignment="Center">
+          <ProgressBar.Effect>
+            <DropShadowEffect Color="#fcee0a" BlurRadius="8" ShadowDepth="0" Opacity="0.7"/>
+          </ProgressBar.Effect>
+        </ProgressBar>
+        <Button x:Name="PauseBtn" Grid.Column="1" Content="PAUSE"
+                Style="{StaticResource GhostButton}"
+                Padding="18,6" FontSize="11"
+                Margin="14,0,0,0"
+                Visibility="Collapsed"/>
+        <TextBlock x:Name="StatusText" Grid.Column="2" Text="IDLE"
+                   FontFamily="JetBrains Mono, Cascadia Mono, Consolas"
+                   Margin="16,0,4,0" VerticalAlignment="Center"
+                   Foreground="{StaticResource Muted}" FontSize="12"/>
+      </Grid>
+
+      <!-- ACTIONS -->
+      <StackPanel Grid.Row="5" Orientation="Horizontal"
+                  HorizontalAlignment="Center" Margin="0,16,0,8">
+        <Button x:Name="ExitBtn"    Content="EXIT"    Style="{StaticResource GhostButton}"   Margin="0,0,14,0"/>
+        <Button x:Name="ResetBtn"   Content="RESET"   Style="{StaticResource WarningButton}" Margin="0,0,14,0"/>
+        <Button x:Name="InstallBtn" Content="INSTALL" Style="{StaticResource PrimaryButton}"/>
+      </StackPanel>
     </Grid>
-
-    <!-- ACTIONS -->
-    <StackPanel Grid.Row="5" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
-      <Button x:Name="ExitBtn"    Content="Exit"            Style="{StaticResource GhostButton}"   Margin="0,0,10,0"/>
-      <Button x:Name="ResetBtn"   Content="Reset terminal"  Style="{StaticResource WarningButton}" Margin="0,0,10,0"/>
-      <Button x:Name="InstallBtn" Content="Execute install" Style="{StaticResource PrimaryButton}"/>
-    </StackPanel>
   </Grid>
 </Window>
 '@
@@ -289,13 +464,86 @@ Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, Sys
 $reader = New-Object System.Xml.XmlNodeReader $xaml
 $window = [Windows.Markup.XamlReader]::Load($reader)
 
+# Fit window to screen WorkArea, leaving small margin so taskbar / borders visible
+$wa = [System.Windows.SystemParameters]::WorkArea
+$marginX = 40
+$marginY = 22
+$window.Width  = [Math]::Min(1800, [Math]::Max(980, $wa.Width  - $marginX * 2))
+$window.Height = [Math]::Min(1240, [Math]::Max(820, $wa.Height - $marginY * 2))
+
 $controls = @{}
-foreach ($n in 'PathBox','BrowseBtn','LogBox','Progress','StatusText','ExitBtn','ResetBtn','InstallBtn',
-               'cb_pwsh','cb_git','cb_wt','cb_font','cb_omp','cb_psrl','cb_icons','cb_poshgit',
-               'cb_profile','cb_wtcfg','cb_elevate','cb_policy','cb_verify',
+foreach ($n in 'PathBox','BrowseBtn','LogBox','Progress','StatusText','ExitBtn','ResetBtn','InstallBtn','PauseBtn',
+               'PathsPanel',
+               'cb_elevate','cb_vscode','cb_neovim','cb_7zip','cb_github','cb_wsl',
                'cb_clean_profile','cb_clean_wt','cb_clean_modules','cb_clean_history') {
     $controls[$n] = $window.FindName($n)
 }
+
+# ------ Populate Paths panel --------------------------------
+function Open-PathTarget {
+    param([string]$Target)
+    if (-not $Target) { return }
+    try {
+        if (Test-Path $Target -PathType Leaf) {
+            Start-Process explorer.exe -ArgumentList "/select,`"$Target`""
+        } elseif (Test-Path $Target -PathType Container) {
+            Start-Process explorer.exe -ArgumentList "`"$Target`""
+        } else {
+            $parent = Split-Path $Target -Parent
+            if ($parent -and (Test-Path $parent)) {
+                Start-Process explorer.exe -ArgumentList "`"$parent`""
+            }
+        }
+    } catch {}
+}
+
+function Add-PathRow {
+    param([string]$Label, [string]$Value)
+    $exists = $false
+    if ($Value) { $exists = Test-Path $Value -ErrorAction SilentlyContinue }
+    $valueColor = if ($exists) { '#e8e8e8' } else { '#3a3b40' }
+
+    $lbl = New-Object System.Windows.Controls.TextBlock
+    $lbl.Text = $Label.ToUpper()
+    $lbl.FontSize = 11
+    $lbl.FontFamily = 'JetBrains Mono, Cascadia Mono, Consolas'
+    $lbl.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom('#8a8104')
+    $lbl.Margin = '0,10,0,3'
+    [void]$controls.PathsPanel.Children.Add($lbl)
+
+    $val = New-Object System.Windows.Controls.TextBlock
+    $val.Text = $Value
+    $val.FontSize = 12
+    $val.FontFamily = 'JetBrains Mono, Cascadia Mono, Consolas'
+    $val.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom($valueColor)
+    $val.TextWrapping = 'Wrap'
+    $val.Cursor = 'Hand'
+    $val.Tag = $Value
+    $val.ToolTip = "Click to open in Explorer"
+    $val.Add_MouseLeftButtonUp({ Open-PathTarget $this.Tag })
+    $val.Add_MouseEnter({ $this.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom('#fcee0a') })
+    $existsBound = $exists
+    $origColor = $valueColor
+    $val.Add_MouseLeave({ $this.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFrom($origColor) }.GetNewClosure())
+    [void]$controls.PathsPanel.Children.Add($val)
+}
+
+$pwshExePath = (Get-Command pwsh -ErrorAction SilentlyContinue | Select-Object -First 1).Source
+if (-not $pwshExePath) {
+    foreach ($p in "$env:ProgramFiles\PowerShell\7\pwsh.exe",
+                   "${env:ProgramFiles(x86)}\PowerShell\7\pwsh.exe",
+                   "$env:LOCALAPPDATA\Microsoft\PowerShell\7\pwsh.exe") {
+        if (Test-Path $p) { $pwshExePath = $p; break }
+    }
+}
+if (-not $pwshExePath) { $pwshExePath = '(not installed)' }
+
+Add-PathRow 'PS7 profile'        (Join-Path $env:USERPROFILE 'Documents\PowerShell\Microsoft.PowerShell_profile.ps1')
+Add-PathRow 'PS7 modules'        (Join-Path $env:USERPROFILE 'Documents\PowerShell\Modules')
+Add-PathRow 'Windows Terminal'   "$env:LOCALAPPDATA\Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json"
+Add-PathRow 'pwsh.exe'           $pwshExePath
+Add-PathRow 'OMP themes folder'  (Join-Path $env:USERPROFILE '.poshthemes')
+Add-PathRow 'OMP active theme'   (Join-Path $env:USERPROFILE '.poshthemes\darkblood.omp.json')
 
 $controls.PathBox.Text = Join-Path $env:USERPROFILE 'Documents'
 
@@ -313,31 +561,62 @@ $controls.ExitBtn.Add_Click({ $window.Close() })
 
 # ------ Sync state ------------------------------------------
 $sync = [hashtable]::Synchronized(@{
-    Window     = $window
-    LogBox     = $controls.LogBox
-    Progress   = $controls.Progress
-    StatusText = $controls.StatusText
-    InstallBtn = $controls.InstallBtn
-    ResetBtn   = $controls.ResetBtn
+    Window      = $window
+    LogBox      = $controls.LogBox
+    Progress    = $controls.Progress
+    StatusText  = $controls.StatusText
+    InstallBtn  = $controls.InstallBtn
+    ResetBtn    = $controls.ResetBtn
+    PauseBtn    = $controls.PauseBtn
+    ActiveProcs = [System.Collections.ArrayList]::new()
+    Paused      = $false
+})
+
+# Pause / Resume click handler (suspends winget child procs)
+$controls.PauseBtn.Add_Click({
+    if ($sync.Paused) {
+        foreach ($p in @($sync.ActiveProcs)) {
+            if ($p -and -not $p.HasExited) {
+                try { [Vorterm.ProcCtl]::NtResumeProcess($p.Handle) | Out-Null } catch {}
+            }
+        }
+        $sync.Paused = $false
+        $controls.PauseBtn.Content = 'Pause'
+        $controls.StatusText.Text = 'Running'
+    } else {
+        foreach ($p in @($sync.ActiveProcs)) {
+            if ($p -and -not $p.HasExited) {
+                try { [Vorterm.ProcCtl]::NtSuspendProcess($p.Handle) | Out-Null } catch {}
+            }
+        }
+        $sync.Paused = $true
+        $controls.PauseBtn.Content = 'Resume'
+        $controls.StatusText.Text = 'Paused'
+    }
 })
 
 # ------ Install action --------------------------------------
 $controls.InstallBtn.Add_Click({
     $opts = @{
         WorkDir      = $controls.PathBox.Text.Trim()
-        Pwsh         = $controls.cb_pwsh.IsChecked
-        Git          = $controls.cb_git.IsChecked
-        WT           = $controls.cb_wt.IsChecked
-        Font         = $controls.cb_font.IsChecked
-        OMP          = $controls.cb_omp.IsChecked
-        PSRL         = $controls.cb_psrl.IsChecked
-        Icons        = $controls.cb_icons.IsChecked
-        PoshGit      = $controls.cb_poshgit.IsChecked
-        WriteProfile = $controls.cb_profile.IsChecked
-        WTConfig     = $controls.cb_wtcfg.IsChecked
+        Pwsh         = $true
+        Git          = $true
+        WT           = $true
+        Font         = $true
+        OMP          = $true
+        PSRL         = $true
+        Icons        = $true
+        PoshGit      = $true
+        WriteProfile = $true
+        WTConfig     = $true
         Elevate      = $controls.cb_elevate.IsChecked
-        Policy       = $controls.cb_policy.IsChecked
-        Verify       = $controls.cb_verify.IsChecked
+        VSCode       = $controls.cb_vscode.IsChecked
+        Neovim       = $controls.cb_neovim.IsChecked
+        SevenZip     = $controls.cb_7zip.IsChecked
+        GitHubDesktop = $controls.cb_github.IsChecked
+        WSL          = $controls.cb_wsl.IsChecked
+        Policy       = $true
+        Verify       = $true
     }
 
     if ([string]::IsNullOrWhiteSpace($opts.WorkDir)) {
@@ -382,7 +661,7 @@ $controls.InstallBtn.Add_Click({
         $script:failures = @()
 
         Write-Log "============================================================"
-        Write-Log "  TERMIX install started  $($started.ToString('yyyy-MM-dd HH:mm:ss'))"
+        Write-Log "  Vorterm install started  $($started.ToString('yyyy-MM-dd HH:mm:ss'))"
         Write-Log "  Startup dir: $($opts.WorkDir)"
         Write-Log "============================================================"
         Write-Log ""
@@ -471,9 +750,48 @@ $controls.InstallBtn.Add_Click({
         if ($opts.WT)   { $pkgs += @{ Id='Microsoft.WindowsTerminal';     Name='Windows Terminal' } }
         if ($opts.Font) { $pkgs += @{ Id='DEVCOM.JetBrainsMonoNerdFont';  Name='JetBrainsMono Nerd Font' } }
         if ($opts.OMP)  { $pkgs += @{ Id='JanDeDobbeleer.OhMyPosh';       Name='oh-my-posh' } }
+        function Test-Optional {
+            param([string]$Cmd, [string[]]$Paths)
+            if ($Cmd -and (Get-Command $Cmd -ErrorAction SilentlyContinue)) { return $true }
+            foreach ($p in $Paths) { if ($p -and (Test-Path $p)) { return $true } }
+            return $false
+        }
+
+        if ($opts.VSCode) {
+            if (Test-Optional 'code' @("$env:LOCALAPPDATA\Programs\Microsoft VS Code\Code.exe",
+                                        "$env:ProgramFiles\Microsoft VS Code\Code.exe")) {
+                Write-Log "  [OK] VS Code already installed"
+            } else { $pkgs += @{ Id='Microsoft.VisualStudioCode'; Name='Visual Studio Code' } }
+        }
+        if ($opts.Neovim) {
+            if (Test-Optional 'nvim' @("$env:ProgramFiles\Neovim\bin\nvim.exe")) {
+                Write-Log "  [OK] Neovim already installed"
+            } else { $pkgs += @{ Id='Neovim.Neovim'; Name='Neovim' } }
+        }
+        if ($opts.SevenZip) {
+            if (Test-Optional $null @("$env:ProgramFiles\7-Zip\7z.exe")) {
+                Write-Log "  [OK] 7-Zip already installed"
+            } else { $pkgs += @{ Id='7zip.7zip'; Name='7-Zip' } }
+        }
+        if ($opts.GitHubDesktop) {
+            if (Test-Optional $null @("$env:LOCALAPPDATA\GitHubDesktop\GitHubDesktop.exe")) {
+                Write-Log "  [OK] GitHub Desktop already installed"
+            } else { $pkgs += @{ Id='GitHub.GitHubDesktop'; Name='GitHub Desktop' } }
+        }
 
         if ($hasWinget -and $pkgs.Count -gt 0) {
             Write-Log "  [..] launching $($pkgs.Count) winget installs in parallel..."
+
+            # Snapshot desktop shortcuts so we can clean up new ones afterwards
+            $desktopDirs = @([Environment]::GetFolderPath('Desktop'),
+                             [Environment]::GetFolderPath('CommonDesktopDirectory')) |
+                           Where-Object { $_ -and (Test-Path $_) }
+            $desktopBefore = @{}
+            foreach ($d in $desktopDirs) {
+                $desktopBefore[$d] = @(Get-ChildItem $d -Filter '*.lnk' -File -ErrorAction SilentlyContinue |
+                                       Select-Object -ExpandProperty Name)
+            }
+
             $procs = @{}
             foreach ($p in $pkgs) {
                 Write-Log "       -> $($p.Name)"
@@ -484,15 +802,43 @@ $controls.InstallBtn.Add_Click({
                 )
                 $proc = Start-Process winget -ArgumentList $args -WindowStyle Hidden -PassThru
                 $procs[$p.Name] = $proc
+                $sync.Window.Dispatcher.Invoke([action]{ [void]$sync.ActiveProcs.Add($proc) })
             }
+
+            # Show Pause button while procs are running
+            $sync.Window.Dispatcher.Invoke([action]{
+                $sync.PauseBtn.Visibility = [System.Windows.Visibility]::Visible
+                $sync.PauseBtn.Content = 'Pause'
+            })
 
             $total = $procs.Count
             $done  = 0
             while ($done -lt $total) {
-                Start-Sleep -Milliseconds 500
+                Start-Sleep -Milliseconds 250
                 $done = ($procs.Values | Where-Object { $_.HasExited }).Count
                 $pct  = 18 + [int](40 * $done / $total)
-                Set-Status "Packages ($done/$total)" $pct
+                $statusLabel = if ($sync.Paused) { "Packages paused ($done/$total)" } else { "Packages ($done/$total)" }
+                Set-Status $statusLabel $pct
+            }
+
+            # All procs done -> hide Pause button + clear tracking
+            $sync.Window.Dispatcher.Invoke([action]{
+                $sync.PauseBtn.Visibility = [System.Windows.Visibility]::Collapsed
+                $sync.ActiveProcs.Clear()
+                $sync.Paused = $false
+            })
+
+            # Cleanup desktop shortcuts created by installers
+            foreach ($d in $desktopDirs) {
+                $now = Get-ChildItem $d -Filter '*.lnk' -File -ErrorAction SilentlyContinue
+                foreach ($lnk in $now) {
+                    if ($desktopBefore[$d] -notcontains $lnk.Name) {
+                        try {
+                            Remove-Item $lnk.FullName -Force -ErrorAction Stop
+                            Write-Log "  [OK] removed desktop shortcut: $($lnk.Name)"
+                        } catch {}
+                    }
+                }
             }
 
             foreach ($name in $procs.Keys) {
@@ -510,6 +856,35 @@ $controls.InstallBtn.Add_Click({
             Write-Log "  [!!] winget missing, skipping all packages"
         }
 
+        # ---- WSL (separate from winget, uses wsl --install) ---
+        if ($opts.WSL) {
+            Set-Status 'WSL' 58
+            try {
+                $wslList = & wsl.exe --list --quiet 2>$null
+                $hasDistro = ($LASTEXITCODE -eq 0) -and
+                             ($wslList | Where-Object { $_ -and $_.Trim() } | Measure-Object).Count -gt 0
+            } catch { $hasDistro = $false }
+
+            if ($hasDistro) {
+                Write-Log "  [OK] WSL already installed with distro"
+            } else {
+                Write-Log "  [..] installing WSL + default distro (Ubuntu, no-launch)..."
+                try {
+                    $wslProc = Start-Process wsl.exe -ArgumentList '--install','--no-launch' `
+                               -Wait -PassThru -WindowStyle Hidden -ErrorAction Stop
+                    if ($wslProc.ExitCode -eq 0) {
+                        Write-Log "  [OK] WSL installed. Reboot may be required to finish setup."
+                    } else {
+                        Write-Log "  [!!] WSL install exit 0x$('{0:X8}' -f $wslProc.ExitCode)"
+                        $script:failures += 'WSL'
+                    }
+                } catch {
+                    Write-Log "  [!!] WSL: $($_.Exception.Message)"
+                    $script:failures += 'WSL'
+                }
+            }
+        }
+
         # Refresh PATH + re-locate pwsh
         $env:Path = [System.Environment]::GetEnvironmentVariable('Path','Machine') + ';' +
                     [System.Environment]::GetEnvironmentVariable('Path','User')
@@ -518,37 +893,20 @@ $controls.InstallBtn.Add_Click({
         # ---- PS modules ----------------------------------
         Set-Status 'Modules' 60
 
-        # Save-Module a paths PS7 + PS5.1 explicitos.
-        # Razon: si script corre en PS5.1 (powershell.exe), Install-Module -Scope CurrentUser
-        # cae en Documents\WindowsPowerShell\Modules (PS5.1 path) y PS7 NO lo ve.
-        # Save-Module evita esa ambiguedad.
+        # Save-Module to PS7 path explicitly. Install-Module under PS5.1 host
+        # would land in Documents\WindowsPowerShell\Modules which PS7 ignores.
         function Install-PSMod {
             param([string]$Name, [string]$Version)
             $ps7Mod = Join-Path $env:USERPROFILE 'Documents\PowerShell\Modules'
-            $ps5Mod = Join-Path $env:USERPROFILE 'Documents\WindowsPowerShell\Modules'
-            foreach ($d in @($ps7Mod, $ps5Mod)) {
-                if (-not (Test-Path $d)) { New-Item -ItemType Directory -Path $d -Force | Out-Null }
-            }
+            if (-not (Test-Path $ps7Mod)) { New-Item -ItemType Directory -Path $ps7Mod -Force | Out-Null }
 
             try {
-                $cur = Get-Module -ListAvailable -Name $Name |
-                       Sort-Object Version -Descending | Select-Object -First 1
-                $needInstall = $true
-                if ($Version) {
-                    if ($cur -and $cur.Version -ge [version]$Version) { $needInstall = $false }
-                } elseif ($cur) {
-                    $needInstall = $false
-                }
-
-                # Comprobar presencia fisica en path PS7 (lo critico)
-                $ps7Has = Test-Path (Join-Path $ps7Mod $Name)
-
-                if (-not $needInstall -and $ps7Has) {
-                    Write-Log "  [OK] $Name $($cur.Version) ya presente (PS7 path)"
+                if (Test-Path (Join-Path $ps7Mod $Name)) {
+                    Write-Log "  [OK] $Name already present"
                     return
                 }
 
-                Write-Log ("  [..] {0} {1} -> Save-Module a {2}" -f $Name,$Version,$ps7Mod)
+                Write-Log ("  [..] {0} {1} -> {2}" -f $Name,$Version,$ps7Mod)
                 $saveArgs = @{
                     Name        = $Name
                     Path        = $ps7Mod
@@ -557,16 +915,7 @@ $controls.InstallBtn.Add_Click({
                 }
                 if ($Version) { $saveArgs.RequiredVersion = $Version }
                 Save-Module @saveArgs
-
-                # Mirror a PS5.1 path para que ambos hosts vean el modulo
-                if (-not (Test-Path (Join-Path $ps5Mod $Name))) {
-                    try {
-                        Copy-Item (Join-Path $ps7Mod $Name) -Destination $ps5Mod -Recurse -Force -ErrorAction Stop
-                    } catch {
-                        Write-Log "  [..] mirror $Name a PS5.1 fallo (no critico): $($_.Exception.Message)"
-                    }
-                }
-                Write-Log "  [OK] $Name instalado"
+                Write-Log "  [OK] $Name installed"
             } catch {
                 Write-Log "  [!!] ${Name}: $($_.Exception.Message)"
                 $script:failures += $Name
@@ -595,20 +944,35 @@ $controls.InstallBtn.Add_Click({
                               Select-Object -ExpandProperty Name
                 }
             }
-            # Familia full ("Nerd Font") > NFM (Mono, mejor para terminal) > NF
+            # Prioridad: Nerd Font Mono (mejor para terminal) > Nerd Font full > Propo > NFM > NF.
+            # JetBrainsMono Nerd Font v3 ships variantes "Mono" / "Propo" como familias separadas,
+            # detectarlas explicitamente para que Windows Terminal no muestre warning de fuente.
             $patterns = @(
-                @{ Rx = '^JetBrainsMono Nerd Font Regular' ; Family = 'JetBrainsMono Nerd Font' },
-                @{ Rx = '^JetBrainsMono NFM Regular'        ; Family = 'JetBrainsMono NFM'        },
-                @{ Rx = '^JetBrainsMono NF Regular'         ; Family = 'JetBrainsMono NF'         }
+                @{ Rx = '^JetBrainsMono\s+Nerd\s+Font\s+Mono\s+Regular'  ; Family = 'JetBrainsMono Nerd Font Mono'  },
+                @{ Rx = '^JetBrainsMonoNL\s+Nerd\s+Font\s+Mono\s+Regular'; Family = 'JetBrainsMonoNL Nerd Font Mono'},
+                @{ Rx = '^JetBrainsMono\s+Nerd\s+Font\s+Propo\s+Regular' ; Family = 'JetBrainsMono Nerd Font Propo' },
+                @{ Rx = '^JetBrainsMono\s+Nerd\s+Font\s+Regular(?!\s+(Mono|Propo))' ; Family = 'JetBrainsMono Nerd Font' },
+                @{ Rx = '^JetBrainsMono\s+NFM\s+Regular'                 ; Family = 'JetBrainsMono NFM'             },
+                @{ Rx = '^JetBrainsMono\s+NFP\s+Regular'                 ; Family = 'JetBrainsMono NFP'             },
+                @{ Rx = '^JetBrainsMono\s+NL\s+Regular'                  ; Family = 'JetBrainsMono NL'              },
+                @{ Rx = '^JetBrainsMono\s+NF\s+Regular'                  ; Family = 'JetBrainsMono NF'              }
             )
             foreach ($p in $patterns) {
                 if ($fonts -match $p.Rx) { return $p.Family }
             }
-            # Fallback generico para cualquier Nerd Font instalada
-            $any = $fonts | Where-Object { $_ -match '(?i)(Nerd|\bNF[MP]?\b)' -and $_ -notmatch 'Bold|Italic|Light|Thin|Medium|Extra|Semi' } |
-                   Select-Object -First 1
+            # Fallback generico para cualquier Nerd Font Mono instalada
+            $any = $fonts | Where-Object {
+                $_ -match '(?i)(Nerd\s+Font\s+Mono|\bNFM\b)' -and
+                $_ -notmatch 'Bold|Italic|Light|Thin|Medium|Extra|Semi'
+            } | Select-Object -First 1
+            if (-not $any) {
+                $any = $fonts | Where-Object {
+                    $_ -match '(?i)(Nerd|\bN[FL][MP]?\b)' -and
+                    $_ -notmatch 'Bold|Italic|Light|Thin|Medium|Extra|Semi'
+                } | Select-Object -First 1
+            }
             if ($any) { return ($any -replace '\s+Regular\s*\(TrueType\)\s*$','' -replace '\s*\(TrueType\)\s*$','').Trim() }
-            return 'JetBrainsMono NF'
+            return 'JetBrainsMono Nerd Font Mono'
         }
         $nerdFontFace = Get-InstalledNerdFont
         Write-Log "  [OK] detected font face: '$nerdFontFace'"
@@ -629,7 +993,7 @@ $controls.InstallBtn.Add_Click({
             $escapedPath = $opts.WorkDir -replace "'", "''"
 
             $profileContent = @"
-# === Generated by TERMIX v3.4 - visual / terminal config ======
+# === Generated by Vorterm 7.0 - visual / terminal config ======
 
 # --- Extra PATH (developer tools when present) ----------------
 `$extraPaths = @(
@@ -806,9 +1170,9 @@ if (-not `$script:_ompActive) {
 }
 
 # --- Initial directory ----------------------------------------
-if (-not `$global:__TermixStarted) {
+if (-not `$global:__VortermStarted) {
     Set-Location '$escapedPath'
-    `$global:__TermixStarted = `$true
+    `$global:__VortermStarted = `$true
     Clear-Host
 }
 "@
@@ -843,6 +1207,7 @@ if (-not `$global:__TermixStarted) {
                 Write-Log "  [!!] Windows Terminal settings.json not found (open WT once to generate it)"
             } else {
                 $ps7Guid = '{574e775e-4f2a-5b96-ac1e-a2962a402336}'
+                $ps5Guid = '{61c54bbd-c2c6-5271-96e7-009a87ff44bf}'
 
                 # PS5.1 ConvertFrom-Json does not understand // and /* */ comments.
                 # WT settings.json is JSONC; strip comments while preserving strings.
@@ -915,9 +1280,10 @@ if (-not `$global:__TermixStarted) {
                         $patched = $false
                         if ($json.profiles.list) {
                             foreach ($prof in $json.profiles.list) {
+                                if ($prof.guid -eq $ps5Guid) { continue }
                                 $isPwsh = ($prof.guid -eq $ps7Guid) -or
-                                          ($prof.commandline -match 'pwsh') -or
-                                          ($prof.name -match 'PowerShell')
+                                          ($prof.commandline -match '(?i)\bpwsh(\.exe)?\b') -or
+                                          ($prof.name -match '(?i)PowerShell' -and $prof.name -notmatch '(?i)Windows PowerShell')
                                 if ($isPwsh) {
                                     Set-Prop $prof 'commandline' 'pwsh.exe -NoLogo -NoProfileLoadTime'
                                     Set-Prop $prof 'startingDirectory' $opts.WorkDir
@@ -925,9 +1291,12 @@ if (-not `$global:__TermixStarted) {
                                         Set-Prop $prof 'elevate' $true
                                     }
                                     if (-not $prof.font) {
-                                        Set-Prop $prof 'font' ([pscustomobject]@{ face = $nerdFontFace; size = 11 })
+                                        Set-Prop $prof 'font' ([pscustomobject]@{ face = $nerdFontFace; size = 14; cellHeight = '1.2'; cellWidth = '0.6' })
                                     } else {
                                         Set-Prop $prof.font 'face' $nerdFontFace
+                                        Set-Prop $prof.font 'size' 14
+                                        Set-Prop $prof.font 'cellHeight' '1.2'
+                                        Set-Prop $prof.font 'cellWidth' '0.6'
                                     }
                                     Write-Log "  [OK] WT profile patched: $($prof.name)"
                                     $patched = $true
@@ -943,7 +1312,7 @@ if (-not `$global:__TermixStarted) {
                                 commandline       = 'pwsh.exe -NoLogo -NoProfileLoadTime'
                                 startingDirectory = $opts.WorkDir
                                 hidden            = $false
-                                font              = [pscustomobject]@{ face = $nerdFontFace; size = 11 }
+                                font              = [pscustomobject]@{ face = $nerdFontFace; size = 14; cellHeight = '1.2'; cellWidth = '0.6' }
                             }
                             if ($opts.Elevate) { Set-Prop $newProf 'elevate' $true }
                             if (-not $json.profiles.list) { Set-Prop $json.profiles 'list' @() }
@@ -1026,16 +1395,36 @@ if (-not `$global:__TermixStarted) {
                 }
             }
 
+            # JetBrainsMono Nerd Font variants: "Nerd Font", "NF", "NFM", "NFP", "NL".
+            # Solo "Nerd Font" full contiene literal "Nerd"; las demas siglas no.
+            $nfRx = '(?i)(Nerd|\bN[FL][MP]?\b|JetBrainsMono\s*N[FL])'
             $hasFont = $false
+            $detectedAs = ''
             foreach ($hive in 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts',
                               'HKCU:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts') {
                 if (Test-Path $hive) {
-                    $names = (Get-ItemProperty $hive).PSObject.Properties.Name
-                    if ($names -match '(?i)Nerd') { $hasFont = $true; break }
+                    $names = (Get-ItemProperty $hive).PSObject.Properties.Name |
+                             Where-Object { $_ -notlike 'PS*' }
+                    $hit = $names | Where-Object { $_ -match $nfRx } | Select-Object -First 1
+                    if ($hit) { $hasFont = $true; $detectedAs = "registry: $hit"; break }
+                }
+            }
+            if (-not $hasFont) {
+                # Fallback: check Fonts folders directly (winget user install sometimes
+                # drops files there before the registry refresh)
+                $fontDirs = @("$env:WINDIR\Fonts",
+                              (Join-Path $env:LOCALAPPDATA 'Microsoft\Windows\Fonts'))
+                foreach ($fd in $fontDirs) {
+                    if (Test-Path $fd) {
+                        $files = Get-ChildItem -Path (Join-Path $fd '*') -Include '*.ttf','*.otf' -File -ErrorAction SilentlyContinue |
+                                 Select-Object -ExpandProperty Name
+                        $hit = $files | Where-Object { $_ -match $nfRx } | Select-Object -First 1
+                        if ($hit) { $hasFont = $true; $detectedAs = "file: $hit"; break }
+                    }
                 }
             }
             if ($hasFont) {
-                Write-Log "  [OK] Nerd Font detected in registry"
+                Write-Log "  [OK] Nerd Font detected ($detectedAs)"
             } else {
                 Write-Log "  [!!] No Nerd Font detected. ls icons will not render"
                 $script:failures += 'nerd-font'
@@ -1055,13 +1444,10 @@ if (-not `$global:__TermixStarted) {
         Write-Log ("  Elapsed: {0:N1}s" -f $elapsed.TotalSeconds)
         Write-Log "============================================================"
         Write-Log ""
-        Write-Log "Next: CLOSE Windows Terminal completely and reopen it. New process picks up the Nerd Font and POSH_THEMES_PATH."
-        Write-Log "First tab loads PowerShell 7 with oh-my-posh prompt + Terminal-Icons + posh-git."
-        if ($opts.Elevate) {
-            Write-Log "Note: PowerShell 7 profile is set to elevate. Each new tab prompts UAC."
-        }
-        Write-Log "If glyphs still render as boxes: Settings -> Profiles -> PowerShell -> Appearance -> Font, pick the Nerd Font manually."
-        Write-Log "Helpers: html <file|url>, open <path>, serve [-Port], sudo <cmd>, profile, SysInfo, Update-Modules."
+        Write-Log "Restart WT to load font + POSH_THEMES_PATH."
+        if ($opts.Elevate) { Write-Log "PS7 profile elevates: UAC prompt per tab." }
+        Write-Log "Glyphs as boxes? WT Settings -> PowerShell -> Appearance -> Font -> Nerd Font."
+        Write-Log "Helpers: html, open, serve, sudo, profile, SysInfo, Update-Modules."
 
         $sync.Window.Dispatcher.Invoke([action]{
             $sync.InstallBtn.IsEnabled = $true
@@ -1084,10 +1470,10 @@ $controls.ResetBtn.Add_Click({
     $msg = @"
 Deep terminal reset. The following will be performed (per checkbox):
 
- - PowerShell profiles: scan PS5.1 + PS7, all hosts (Console / ISE / VSCode / profile.ps1). Restore from latest TERMIX backup, or move to .before-reset-* and delete.
+ - PowerShell profiles: scan PS5.1 + PS7, all hosts (Console / ISE / VSCode / profile.ps1). Restore from latest Vorterm backup, or move to .before-reset-* and delete.
  - PSReadLine history: wipe %APPDATA%\Microsoft\Windows\PowerShell\PSReadLine\*_history.txt
  - Terminal/prompt modules: uninstall Terminal-Icons, posh-git, oh-my-posh, PSReadLine, PSColor, Pansies, PSFzf, PSEverything, BurntToast, etc. Plus oh-my-posh winget package if present.
- - Windows Terminal settings.json: restore latest TERMIX backup. If no backup, strip only TERMIX-set keys (commandline pwsh, Nerd font, elevate, startingDirectory). Color schemes / keybindings / themes preserved.
+ - Windows Terminal settings.json: restore latest Vorterm backup. If no backup, strip only Vorterm-set keys (commandline pwsh, Nerd font, elevate, startingDirectory). Color schemes / keybindings / themes preserved.
 
 Skipped (never touched): Az.*, Microsoft.Graph.*, MSOnline, ExchangeOnlineManagement, MicrosoftTeams, PnP.*, Pester, PSScriptAnalyzer, SqlServer, dbatools.
 Apps NOT uninstalled: PowerShell 7, Git, Windows Terminal, Nerd Font.
@@ -1096,7 +1482,7 @@ Continue?
 "@
     $confirm = [System.Windows.MessageBox]::Show(
         $msg,
-        'TERMIX  -  Deep reset terminal',
+        'Vorterm  -  Deep reset terminal',
         [System.Windows.MessageBoxButton]::YesNo,
         [System.Windows.MessageBoxImage]::Warning
     )
@@ -1177,7 +1563,7 @@ Continue?
         $stamp     = Get-Date -Format yyyyMMddHHmmss
 
         Write-Log "============================================================"
-        Write-Log "  TERMIX deep reset  $($started.ToString('yyyy-MM-dd HH:mm:ss'))"
+        Write-Log "  Vorterm deep reset  $($started.ToString('yyyy-MM-dd HH:mm:ss'))"
         Write-Log "============================================================"
         Write-Log ""
 
@@ -1356,8 +1742,8 @@ Continue?
                             continue
                         }
 
-                        # No backup: strip TERMIX markers in-place
-                        Write-Log "  [..] no backup for $wt, stripping TERMIX keys..."
+                        # No backup: strip Vorterm markers in-place
+                        Write-Log "  [..] no backup for $wt, stripping Vorterm keys..."
                         $bk = "$wt.before-reset-$stamp"
                         Copy-Item $wt $bk -Force
 
@@ -1400,7 +1786,7 @@ Continue?
                             Write-Log "       safety copy: $bk"
                         } else {
                             Remove-Item $bk -Force
-                            Write-Log "  [..] no TERMIX markers found, file unchanged"
+                            Write-Log "  [..] no Vorterm markers found, file unchanged"
                         }
                     } catch {
                         Write-Log "  [!!] $wt : $($_.Exception.Message)"
