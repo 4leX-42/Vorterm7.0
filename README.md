@@ -6,7 +6,7 @@
 
 <br/>
 
-<img src="https://github.com/user-attachments/assets/04626d6e-7bdb-4529-8e26-6852fa1d6a6f" alt="Vorterm 7.0 panel" width="880"/>
+<img width="800" height="800" alt="logo_vorterm" src="https://github.com/user-attachments/assets/a982c6b2-9dc2-4f65-a131-98291bb14226" />
 
 <br/><br/>
 
