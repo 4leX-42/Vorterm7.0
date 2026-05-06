@@ -1,67 +1,90 @@
-# ⚡ TERMIX v2.1
+# TERMIX v3.1
 
-> One script. Full PowerShell environment. Zero manual setup.
-
-Windows 10/11 | PowerShell 7+ | MIT License
+Professional terminal installer for Windows. Single double-click.
 
 ---
 
-## 📦 ¿Qué hace?
+## Use
 
-Ejecuta INSTALAR.bat y el sistema se configura automáticamente:
+`INSTALAR.bat` -> GUI opens -> set startup dir -> tick components -> **Execute install**.
 
-- Execution Policy -> RemoteSigned en CurrentUser (fallback Process si hay GPO)
-- Perfil ($PROFILE) -> Generado para PS7 y PS5.1 con backup automático del anterior
-- Módulos esenciales -> PSReadLine 2.3.6+, Terminal-Icons, posh-git
-- Paquetes (winget) -> Git, Python 3.12, .NET SDK 8, Windows Terminal, JetBrainsMono Nerd Font
-- PowerShell 7 -> Instalado automáticamente si no está presente
+No manual Windows Terminal steps. Font, command-line flags, default profile and (optional) elevation are applied automatically.
 
 ---
 
-## 🚀 Carga del perfil
+## What it installs
 
-Cada vez que abres una terminal se carga esto:
+**Apps (winget, parallel):**
+- PowerShell 7
+- Git
+- Windows Terminal
+- JetBrainsMono Nerd Font
+- oh-my-posh (drives the prompt theme + glyphs)
 
-PSReadLine     -> historial incremental, predicción, ListView, atajos ↑↓
-posh-git       -> muestra la rama actual en el prompt (solo si git.exe existe)
-Terminal-Icons -> iconos en ls/dir
+**PowerShell modules:**
+- PSReadLine 2.3.6 (ListView prediction)
+- Terminal-Icons (icons in `ls`)
+- posh-git
 
-Prompt resultante:
-
-[22:47] C:\proyectos  [main] >
-
----
-
-## 🛠️ Despliegue
-
-INSTALAR.bat                           -> Doble clic — se auto-eleva si requiere administrador
-.\setup_terminal.ps1 -StartPath "C:\dev" -> Fija directorio de inicio
-.\setup_terminal.ps1 -SkipInstalls     -> Solo perfil + módulos, sin winget
-
----
-
-## ⚙️ Configuración post-instalación (Windows Terminal)
-
-1. Abre Windows Terminal
-2. Haz clic en la flecha hacia abajo (∨) en la barra superior
-3. Ve a Configuración
-4. En la lista de perfiles, selecciona PowerShell.
-5. Busca el campo Línea de comandos y pega:
-   pwsh -NoLogo -NoProfileLoadTime
-6. Guarda los cambios
-
-Opcional – fuente recomendada:
-En el mismo perfil, ve a Apariencia -> Fuente -> JetBrainsMono Nerd Font
+**Configuration (auto):**
+- `$PROFILE` for PS7 + PS5.1 (UTF-8 BOM)
+- Windows Terminal `settings.json` patched (JSONC-safe parser):
+  - PS7 profile `commandline` -> `pwsh.exe -NoLogo -NoProfileLoadTime`
+  - Profile + defaults `font.face` -> auto-detected Nerd Font name
+  - `startingDirectory` -> chosen path
+  - `defaultProfile` -> PowerShell 7 GUID
+  - `elevate: true` -> if "Run as Administrator" is ticked
+- ExecutionPolicy -> RemoteSigned (CurrentUser)
+- Post-install verify: confirms Terminal-Icons loads in PS7 + Nerd Font in registry
 
 ---
 
-## ♻️ Idempotencia
+## Profile (visual / terminal only — no Azure / M365 / EXO)
 
-El script es seguro de relanzar:
-- No reinstala lo que ya existe
-- Crea un backup con timestamp antes de sobrescribir $PROFILE
-- Requiere Windows 10/11, winget y permisos de administrador
+- Extra PATH: Git, Node, Vim, GnuWin32 (when present)
+- **oh-my-posh** prompt with `amro.omp.json` theme. Falls back to a minimal built-in prompt if oh-my-posh missing.
+- **posh-git** — git status segments
+- **Terminal-Icons** — glyphs in `ls`/`gci`
+- **PSReadLine 2.3.6** — `HistoryAndPlugin` predictions, `ListView` view, full key handlers (Ctrl+arrows, Ctrl+Backspace/Delete, Home/End)
+- Aliases: `ll`, `g`, `grep` (Select-String), `which` (Get-Command), `touch` (New-Item), `profile` (Open-Profile)
+- Functions: `Open-Profile`, `SysInfo`, `Update-Modules`, `html <file|url>`, `open <path>`, `serve [-Port 8000] [-Path .]`, `sudo <cmd>`
 
 ---
 
-Hecho con 🧠 para que no tengas que hacer nada
+## Performance
+
+- All winget installs run in parallel. End-to-end install on a clean box is ~2-4x faster than serial.
+- Skips the slow `winget list` pre-check; relies on idempotent `winget install`.
+- Async worker runspace -> UI never freezes.
+
+---
+
+## Idempotency / safety
+
+- Re-run is safe. Modules and packages skip if already installed.
+- Backups before overwrite: `*.bak-<timestamp>` for `$PROFILE` and Windows Terminal `settings.json`.
+- Each component has its own checkbox -> uncheck to skip.
+
+---
+
+## Reset / clean (deep)
+
+`Reset terminal` button does a **deep** reset across all common Windows 11 user-level terminal customisations, regardless of whether TERMIX put them there. Useful when a user already has some other config and wants to lay TERMIX (or anything else) on top.
+
+Per-checkbox actions:
+
+- **Reset all PowerShell profiles (PS5.1 + PS7, all hosts)**
+  Scans `Documents\PowerShell` and `Documents\WindowsPowerShell` for `profile.ps1`, `Microsoft.PowerShell_profile.ps1`, `Microsoft.PowerShellISE_profile.ps1`, `Microsoft.VSCode_profile.ps1`. Restores the latest `*.bak-<timestamp>` if present; otherwise saves a `*.before-reset-<stamp>` safety copy and deletes.
+
+- **Clear PSReadLine history**
+  Wipes every `*_history.txt` in `%APPDATA%\Microsoft\Windows\PowerShell\PSReadLine` (Console / ISE / VSCode hosts).
+
+- **Uninstall terminal/prompt modules** (allowlist; cloud/dev tools never touched)
+  `Uninstall-Module -AllVersions` for: `PSReadLine`, `Terminal-Icons`, `posh-git`, `oh-my-posh`, `PowerLine`, `PSColor`, `Get-ChildItemColor`, `Pansies`, `PoshColor`, `PSFzf`, `PSEverything`, `cd-extras`, `z`, `PowerShellHumanizer`, `BurntToast`, `DockerCompletion`, `WslInterop`. Falls back to direct `Remove-Item` of the user `ModuleBase` if `Uninstall-Module` fails. Also runs `winget uninstall JanDeDobbeleer.OhMyPosh` if that package is present.
+
+  **Never uninstalled** (explicit blocklist): `Az.*`, `AzureAD`, `AzureRM`, `Microsoft.Graph.*`, `MSOnline`, `ExchangeOnlineManagement`, `MicrosoftTeams`, `PnP.*`, `SharePoint*`, `Microsoft.PowerShell.*` (core), `PowerShellGet`, `PackageManagement`, `Pester`, `PSScriptAnalyzer`, `SqlServer`, `dbatools`.
+
+- **Reset Windows Terminal settings.json**
+  Restores the latest TERMIX backup if present. Otherwise opens the file (JSONC-aware), and removes only the TERMIX-set keys from the PS7 profile (`commandline` matching the TERMIX signature, `font`, `elevate`, `startingDirectory`) plus `defaults.font` if it points to a Nerd Font. Color schemes, keybindings, themes and other profiles are preserved.
+
+A confirmation dialog lists every action before anything runs. **Never uninstalled by Reset**: PowerShell 7, Git, Windows Terminal app, Nerd Font. Remove those manually with `winget uninstall --id <package-id>` if needed.
