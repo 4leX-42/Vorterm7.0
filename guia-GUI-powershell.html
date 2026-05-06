@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>WPF + PowerShell GUI guide</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+:root {
+  --bg: #0F1419;
+  --panel: #161B22;
+  --panel-2: #0B0E13;
+  --border: #2D3743;
+  --text: #E5E9F0;
+  --muted: #8B95A8;
+  --accent: #4FC3F7;
+  --accent-hi: #81D4FA;
+  --warn: #F0883E;
+  --ok: #56D364;
+  --err: #F85149;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.55;
+}
+.layout { display: grid; grid-template-columns: 240px 1fr; max-width: 1320px; margin: 0 auto; }
+aside {
+  background: var(--panel);
+  border-right: 1px solid var(--border);
+  padding: 22px 18px;
+  position: sticky; top: 0; height: 100vh; overflow-y: auto;
+}
+aside .logo { font-family: 'Cascadia Code', monospace; font-size: 11px; color: var(--accent); letter-spacing: 2px; }
+aside h1 { font-size: 16px; margin: 4px 0 18px 0; font-weight: 600; }
+aside nav { font-size: 12px; }
+aside nav a {
+  display: block; color: var(--muted); text-decoration: none;
+  padding: 4px 10px; border-left: 2px solid transparent; border-radius: 0 3px 3px 0;
+}
+aside nav a:hover, aside nav a.active { color: var(--accent); border-left-color: var(--accent); background: rgba(79,195,247,0.06); }
+aside nav .group { text-transform: uppercase; font-size: 10px; letter-spacing: 1.5px; color: var(--muted); padding: 12px 10px 4px; font-weight: 700; opacity: 0.6; }
+
+main { padding: 36px 48px 80px 48px; max-width: 920px; }
+header.hero { border-bottom: 1px solid var(--border); padding-bottom: 18px; margin-bottom: 28px; }
+header.hero .tag {
+  display: inline-block; font-family: 'Cascadia Code', monospace; font-size: 10px;
+  color: var(--accent); border: 1px solid var(--accent); padding: 2px 8px;
+  letter-spacing: 2px; margin-bottom: 10px;
+}
+header.hero h1 { font-size: 28px; margin: 0 0 8px 0; font-weight: 700; letter-spacing: -0.3px; }
+header.hero p { color: var(--muted); margin: 0; font-size: 14px; }
+
+h2 {
+  font-size: 19px; margin: 36px 0 12px; padding-bottom: 8px;
+  border-bottom: 1px solid var(--border); font-weight: 700; scroll-margin-top: 24px;
+}
+h2 .num { color: var(--accent); font-family: 'Cascadia Code', monospace; font-size: 13px; margin-right: 10px; opacity: 0.7; }
+h3 { font-size: 15px; margin: 18px 0 8px; font-weight: 600; color: var(--accent-hi); }
+p { margin: 0 0 10px 0; }
+ul, ol { padding-left: 20px; margin: 6px 0 12px; }
+li { margin-bottom: 4px; }
+
+a { color: var(--accent); text-decoration: none; border-bottom: 1px dotted var(--accent); }
+
+code {
+  font-family: 'Cascadia Code', 'Consolas', monospace; font-size: 12px;
+  background: var(--panel-2); padding: 1px 5px; border-radius: 3px;
+  border: 1px solid var(--border); color: var(--accent);
+}
+
+pre {
+  background: var(--panel-2); border: 1px solid var(--border); border-left: 3px solid var(--accent);
+  border-radius: 3px; padding: 12px 16px; overflow-x: auto;
+  font-family: 'Cascadia Code', monospace; font-size: 12px; line-height: 1.5;
+  margin: 8px 0 14px; position: relative;
+}
+pre code { background: none; padding: 0; border: none; color: var(--text); font-size: 12px; }
+pre .lang { position: absolute; top: 6px; right: 10px; font-size: 9px; letter-spacing: 2px; color: var(--muted); text-transform: uppercase; }
+
+.kw{color:#C792EA} .str{color:#C3E88D} .num{color:#F78C6C} .cmt{color:#6E7681;font-style:italic}
+.fn{color:#82AAFF} .tag{color:#FF5370} .attr{color:#81D4FA} .var{color:#F0883E}
+
+table { width: 100%; border-collapse: collapse; margin: 8px 0 16px; font-size: 12px; }
+th, td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; vertical-align: top; }
+th { background: var(--panel); color: var(--accent); font-size: 10px; letter-spacing: 1px; text-transform: uppercase; }
+tr:nth-child(even) td { background: rgba(255,255,255,0.012); }
+
+.callout {
+  border-left: 3px solid var(--accent); background: rgba(79,195,247,0.05);
+  padding: 10px 14px; margin: 12px 0; border-radius: 0 3px 3px 0; font-size: 13px;
+}
+.callout.warn { border-left-color: var(--warn); background: rgba(240,136,62,0.05); }
+.callout.danger { border-left-color: var(--err); background: rgba(248,81,73,0.05); }
+.callout .label { font-family: 'Cascadia Code', monospace; font-size: 10px; font-weight: 700; letter-spacing: 2px; color: var(--accent); margin-right: 6px; text-transform: uppercase; }
+.callout.warn .label { color: var(--warn); }
+.callout.danger .label { color: var(--err); }
+
+.csv-wrap { position: relative; }
+.csv-wrap .copy-btn {
+  position: absolute; top: 8px; right: 10px; z-index: 5;
+  background: var(--panel); color: var(--accent); border: 1px solid var(--accent);
+  font-family: 'Cascadia Code', monospace; font-size: 11px; padding: 5px 12px;
+  cursor: pointer; border-radius: 3px; letter-spacing: 1px; transition: all 0.15s;
+}
+.csv-wrap .copy-btn:hover { background: var(--accent); color: var(--panel-2); }
+.csv-wrap .copy-btn.copied { background: var(--ok); border-color: var(--ok); color: var(--panel-2); }
+pre.csv-block { font-size: 11px; max-height: 540px; padding-top: 38px; }
+pre.csv-block .header-row { color: var(--accent); font-weight: 700; }
+
+footer { border-top: 1px solid var(--border); margin-top: 48px; padding-top: 18px; color: var(--muted); font-size: 12px; }
+
+@media print { aside { display: none; } .layout { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="layout">
+
+<aside>
+  <div class="logo">// guide</div>
+  <h1>WPF + PowerShell</h1>
+  <nav>
+    <div class="group">Base</div>
+    <a href="#tldr">TL;DR</a>
+    <a href="#stack">Stack</a>
+    <a href="#assemblies">Assemblies</a>
+    <a href="#arch">Arquitectura</a>
+
+    <div class="group">UI</div>
+    <a href="#xaml">XAML inline</a>
+    <a href="#layout">Layout</a>
+    <a href="#buttons">Botones</a>
+    <a href="#styling">Theming</a>
+
+    <div class="group">Async</div>
+    <a href="#runspaces">Runspaces</a>
+    <a href="#dispatcher">Dispatcher</a>
+
+    <div class="group">Mini consola</div>
+    <a href="#console">Panel + input</a>
+    <a href="#exec">Ejecutor</a>
+
+    <div class="group">Deploy</div>
+    <a href="#launcher">Launcher</a>
+    <a href="#pitfalls">Pitfalls</a>
+
+    <div class="group">Integracion</div>
+    <a href="#csv">CSV drop-in</a>
+  </nav>
+</aside>
+
+<main>
+
+<header class="hero">
+  <div class="tag">v1.1 / integration guide</div>
+  <h1>WPF + PowerShell GUI</h1>
+  <p>Componentes drop-in para inyectar GUI WPF + mini consola en cualquier script .ps1 existente. Sin compilacion, sin dependencias.</p>
+</header>
+
+<!-- ========================================================== -->
+<h2 id="tldr"><span class="num">00</span>TL;DR</h2>
+<pre><span class="lang">flow</span><code>.ps1 -STA
+  Add-Type WPF
+  [xml]$xaml = @'<Window>...</Window>'@
+  XamlReader.Load -> $window
+  FindName -> $ctrl hashtable
+  $btn.Add_Click({ ... })
+  $window.ShowDialog()</code></pre>
+
+<div class="callout"><span class="label">key</span>WPF requiere STA. PS5.1 ya lo trae. PS7 necesita <code>-STA</code> explicito.</div>
+
+<!-- ========================================================== -->
+<h2 id="stack"><span class="num">01</span>Stack</h2>
+<table>
+<tr><th>Capa</th><th>Tech</th><th>Rol</th></tr>
+<tr><td>UI</td><td>XAML</td><td>Layout declarativo, controles, estilos</td></tr>
+<tr><td>Logic</td><td>PowerShell 5.1+</td><td>Carga XAML, eventos, runspaces</td></tr>
+<tr><td>Render</td><td>WPF</td><td>Visual tree, vector, theming</td></tr>
+<tr><td>Threading</td><td>Runspace + Dispatcher</td><td>Trabajo async sin congelar UI</td></tr>
+<tr><td>IPC</td><td>Synchronized hashtable</td><td>Estado compartido thread-safe</td></tr>
+<tr><td>Dialogs</td><td>WinForms</td><td>FolderBrowserDialog</td></tr>
+</table>
+
+<!-- ========================================================== -->
+<h2 id="assemblies"><span class="num">02</span>Assemblies</h2>
+<pre><span class="lang">powershell</span><code><span class="fn">Add-Type</span> -AssemblyName PresentationFramework, PresentationCore, WindowsBase, System.Windows.Forms</code></pre>
+
+<!-- ========================================================== -->
+<h2 id="arch"><span class="num">03</span>Arquitectura</h2>
+<pre><span class="lang">powershell</span><code>[<span class="kw">CmdletBinding</span>()] <span class="kw">param</span>()
+<span class="var">$ErrorActionPreference</span> = <span class="str">'Stop'</span>
+
+<span class="fn">Add-Type</span> -AssemblyName PresentationFramework, PresentationCore, WindowsBase, System.Windows.Forms
+
+[<span class="kw">xml</span>]<span class="var">$xaml</span> = @<span class="str">'</span>
+<span class="str">&lt;Window xmlns="..." Title="App"&gt;...&lt;/Window&gt;</span>
+<span class="str">'</span>@
+
+<span class="var">$window</span> = [<span class="kw">Windows.Markup.XamlReader</span>]::Load((<span class="fn">New-Object</span> System.Xml.XmlNodeReader <span class="var">$xaml</span>))
+
+<span class="var">$ctrl</span> = @{}
+<span class="kw">foreach</span> (<span class="var">$n</span> <span class="kw">in</span> <span class="str">'BtnRun'</span>,<span class="str">'LogBox'</span>,<span class="str">'ConsoleIn'</span>) { <span class="var">$ctrl</span>[<span class="var">$n</span>] = <span class="var">$window</span>.FindName(<span class="var">$n</span>) }
+
+<span class="var">$sync</span> = [<span class="kw">hashtable</span>]::Synchronized(@{ Window=<span class="var">$window</span>; LogBox=<span class="var">$ctrl</span>.LogBox })
+
+<span class="var">$ctrl</span>.BtnRun.Add_Click({ <span class="cmt"># ... </span> })
+
+[<span class="kw">void</span>]<span class="var">$window</span>.ShowDialog()</code></pre>
+
+<!-- ========================================================== -->
+<h2 id="xaml"><span class="num">04</span>XAML inline</h2>
+<pre><span class="lang">xaml</span><code><span class="tag">&lt;Window</span> <span class="attr">xmlns</span>=<span class="str">"http://schemas.microsoft.com/winfx/2006/xaml/presentation"</span>
+        <span class="attr">xmlns:x</span>=<span class="str">"http://schemas.microsoft.com/winfx/2006/xaml"</span>
+        <span class="attr">Title</span>=<span class="str">"App"</span> <span class="attr">Height</span>=<span class="str">"720"</span> <span class="attr">Width</span>=<span class="str">"1080"</span>
+        <span class="attr">Background</span>=<span class="str">"#0F1419"</span> <span class="attr">Foreground</span>=<span class="str">"#E5E9F0"</span>
+        <span class="attr">FontFamily</span>=<span class="str">"Segoe UI"</span> <span class="attr">FontSize</span>=<span class="str">"14"</span><span class="tag">&gt;</span>
+  <span class="tag">&lt;Window.Resources&gt;</span><span class="cmt">&lt;!-- estilos --&gt;</span><span class="tag">&lt;/Window.Resources&gt;</span>
+  <span class="tag">&lt;Grid&gt;</span><span class="cmt">&lt;!-- contenido --&gt;</span><span class="tag">&lt;/Grid&gt;</span>
+<span class="tag">&lt;/Window&gt;</span></code></pre>
+
+<ul>
+<li>Here-string literal <code>@'...'@</code> evita interpolacion.</li>
+<li><code>x:Name</code> = id para <code>FindName</code>.</li>
+<li>Solo ASCII en el .ps1 si no hay BOM UTF-8.</li>
+</ul>
+
+<!-- ========================================================== -->
+<h2 id="layout"><span class="num">05</span>Layout</h2>
+<table>
+<tr><th>Container</th><th>Uso</th></tr>
+<tr><td><code>Grid</code></td><td>Root. Filas/cols con <code>*</code> / <code>Auto</code> / fijo.</td></tr>
+<tr><td><code>StackPanel</code></td><td>Apilar vertical/horizontal.</td></tr>
+<tr><td><code>WrapPanel</code></td><td>Flujo automatico (checkbox groups).</td></tr>
+<tr><td><code>Border</code></td><td>Caja con borde + padding + bg.</td></tr>
+<tr><td><code>ScrollViewer</code></td><td>Wrap contenido scroleable.</td></tr>
+</table>
+
+<pre><span class="lang">xaml</span><code><span class="tag">&lt;Grid.RowDefinitions&gt;</span>
+  <span class="tag">&lt;RowDefinition</span> <span class="attr">Height</span>=<span class="str">"Auto"</span><span class="tag">/&gt;</span>  <span class="cmt">&lt;!-- header --&gt;</span>
+  <span class="tag">&lt;RowDefinition</span> <span class="attr">Height</span>=<span class="str">"*"</span><span class="tag">/&gt;</span>     <span class="cmt">&lt;!-- log --&gt;</span>
+  <span class="tag">&lt;RowDefinition</span> <span class="attr">Height</span>=<span class="str">"180"</span><span class="tag">/&gt;</span>   <span class="cmt">&lt;!-- consola --&gt;</span>
+  <span class="tag">&lt;RowDefinition</span> <span class="attr">Height</span>=<span class="str">"Auto"</span><span class="tag">/&gt;</span>  <span class="cmt">&lt;!-- botones --&gt;</span>
+<span class="tag">&lt;/Grid.RowDefinitions&gt;</span></code></pre>
+
+<!-- ========================================================== -->
+<h2 id="buttons"><span class="num">06</span>Botones</h2>
+<pre><span class="lang">xaml</span><code><span class="tag">&lt;StackPanel</span> <span class="attr">Orientation</span>=<span class="str">"Horizontal"</span> <span class="attr">HorizontalAlignment</span>=<span class="str">"Right"</span><span class="tag">&gt;</span>
+  <span class="tag">&lt;Button</span> <span class="attr">x:Name</span>=<span class="str">"BtnExit"</span>  <span class="attr">Content</span>=<span class="str">"Exit"</span>  <span class="attr">Style</span>=<span class="str">"{StaticResource GhostButton}"</span>   <span class="attr">Margin</span>=<span class="str">"0,0,8,0"</span><span class="tag">/&gt;</span>
+  <span class="tag">&lt;Button</span> <span class="attr">x:Name</span>=<span class="str">"BtnReset"</span> <span class="attr">Content</span>=<span class="str">"Reset"</span> <span class="attr">Style</span>=<span class="str">"{StaticResource WarningButton}"</span> <span class="attr">Margin</span>=<span class="str">"0,0,8,0"</span><span class="tag">/&gt;</span>
+  <span class="tag">&lt;Button</span> <span class="attr">x:Name</span>=<span class="str">"BtnRun"</span>   <span class="attr">Content</span>=<span class="str">"Run"</span>   <span class="attr">Style</span>=<span class="str">"{StaticResource PrimaryButton}"</span><span class="tag">/&gt;</span>
+<span class="tag">&lt;/StackPanel&gt;</span></code></pre>
+
+<pre><span class="lang">powershell</span><code><span class="var">$ctrl</span>.BtnRun.Add_Click({
+    <span class="var">$this</span>.IsEnabled = <span class="var">$false</span>
+    <span class="fn">Start-AsyncJob</span> -Work { ... }
+})
+
+<span class="var">$ctrl</span>.BtnReset.Add_Click({
+    <span class="var">$r</span> = [<span class="kw">System.Windows.MessageBox</span>]::Show(<span class="str">'Reset?'</span>,<span class="str">'Confirm'</span>,<span class="str">'YesNo'</span>,<span class="str">'Warning'</span>)
+    <span class="kw">if</span> (<span class="var">$r</span> -eq <span class="str">'Yes'</span>) { <span class="cmt"># ... </span> }
+})</code></pre>
+
+<p><b>Reglas</b>: 1 Primary, 0-1 Warning, resto Ghost. Confirmacion para destructivos. Disable durante work.</p>
+
+<!-- ========================================================== -->
+<h2 id="styling"><span class="num">07</span>Theming</h2>
+<pre><span class="lang">xaml</span><code><span class="tag">&lt;SolidColorBrush</span> <span class="attr">x:Key</span>=<span class="str">"Accent"</span>  <span class="attr">Color</span>=<span class="str">"#4FC3F7"</span><span class="tag">/&gt;</span>
+<span class="tag">&lt;SolidColorBrush</span> <span class="attr">x:Key</span>=<span class="str">"Border1"</span> <span class="attr">Color</span>=<span class="str">"#2D3743"</span><span class="tag">/&gt;</span>
+<span class="tag">&lt;SolidColorBrush</span> <span class="attr">x:Key</span>=<span class="str">"Warn"</span>    <span class="attr">Color</span>=<span class="str">"#F0883E"</span><span class="tag">/&gt;</span>
+
+<span class="tag">&lt;Style</span> <span class="attr">x:Key</span>=<span class="str">"GhostButton"</span> <span class="attr">TargetType</span>=<span class="str">"Button"</span><span class="tag">&gt;</span>
+  <span class="tag">&lt;Setter</span> <span class="attr">Property</span>=<span class="str">"Background"</span>  <span class="attr">Value</span>=<span class="str">"Transparent"</span><span class="tag">/&gt;</span>
+  <span class="tag">&lt;Setter</span> <span class="attr">Property</span>=<span class="str">"Foreground"</span>  <span class="attr">Value</span>=<span class="str">"{StaticResource Accent}"</span><span class="tag">/&gt;</span>
+  <span class="tag">&lt;Setter</span> <span class="attr">Property</span>=<span class="str">"BorderBrush"</span> <span class="attr">Value</span>=<span class="str">"{StaticResource Border1}"</span><span class="tag">/&gt;</span>
+  <span class="tag">&lt;Setter</span> <span class="attr">Property</span>=<span class="str">"BorderThickness"</span> <span class="attr">Value</span>=<span class="str">"1"</span><span class="tag">/&gt;</span>
+  <span class="tag">&lt;Setter</span> <span class="attr">Property</span>=<span class="str">"Padding"</span> <span class="attr">Value</span>=<span class="str">"16,8"</span><span class="tag">/&gt;</span>
+  <span class="tag">&lt;Setter</span> <span class="attr">Property</span>=<span class="str">"Cursor"</span>  <span class="attr">Value</span>=<span class="str">"Hand"</span><span class="tag">/&gt;</span>
+  <span class="tag">&lt;Setter</span> <span class="attr">Property</span>=<span class="str">"Template"</span><span class="tag">&gt;</span>
+    <span class="tag">&lt;Setter.Value&gt;</span>
+      <span class="tag">&lt;ControlTemplate</span> <span class="attr">TargetType</span>=<span class="str">"Button"</span><span class="tag">&gt;</span>
+        <span class="tag">&lt;Border</span> <span class="attr">x:Name</span>=<span class="str">"bd"</span> <span class="attr">Background</span>=<span class="str">"{TemplateBinding Background}"</span>
+                <span class="attr">BorderBrush</span>=<span class="str">"{TemplateBinding BorderBrush}"</span>
+                <span class="attr">BorderThickness</span>=<span class="str">"{TemplateBinding BorderThickness}"</span><span class="tag">&gt;</span>
+          <span class="tag">&lt;ContentPresenter</span> <span class="attr">HorizontalAlignment</span>=<span class="str">"Center"</span> <span class="attr">VerticalAlignment</span>=<span class="str">"Center"</span> <span class="attr">Margin</span>=<span class="str">"{TemplateBinding Padding}"</span><span class="tag">/&gt;</span>
+        <span class="tag">&lt;/Border&gt;</span>
+        <span class="tag">&lt;ControlTemplate.Triggers&gt;</span>
+          <span class="tag">&lt;Trigger</span> <span class="attr">Property</span>=<span class="str">"IsMouseOver"</span> <span class="attr">Value</span>=<span class="str">"True"</span><span class="tag">&gt;</span>
+            <span class="tag">&lt;Setter</span> <span class="attr">TargetName</span>=<span class="str">"bd"</span> <span class="attr">Property</span>=<span class="str">"Background"</span> <span class="attr">Value</span>=<span class="str">"#1A2733"</span><span class="tag">/&gt;</span>
+          <span class="tag">&lt;/Trigger&gt;</span>
+          <span class="tag">&lt;Trigger</span> <span class="attr">Property</span>=<span class="str">"IsEnabled"</span> <span class="attr">Value</span>=<span class="str">"False"</span><span class="tag">&gt;</span>
+            <span class="tag">&lt;Setter</span> <span class="attr">TargetName</span>=<span class="str">"bd"</span> <span class="attr">Property</span>=<span class="str">"Opacity"</span> <span class="attr">Value</span>=<span class="str">"0.4"</span><span class="tag">/&gt;</span>
+          <span class="tag">&lt;/Trigger&gt;</span>
+        <span class="tag">&lt;/ControlTemplate.Triggers&gt;</span>
+      <span class="tag">&lt;/ControlTemplate&gt;</span>
+    <span class="tag">&lt;/Setter.Value&gt;</span>
+  <span class="tag">&lt;/Setter&gt;</span>
+<span class="tag">&lt;/Style&gt;</span>
+
+<span class="tag">&lt;Style</span> <span class="attr">x:Key</span>=<span class="str">"PrimaryButton"</span> <span class="attr">TargetType</span>=<span class="str">"Button"</span> <span class="attr">BasedOn</span>=<span class="str">"{StaticResource GhostButton}"</span><span class="tag">&gt;</span>
+  <span class="tag">&lt;Setter</span> <span class="attr">Property</span>=<span class="str">"Background"</span> <span class="attr">Value</span>=<span class="str">"{StaticResource Accent}"</span><span class="tag">/&gt;</span>
+  <span class="tag">&lt;Setter</span> <span class="attr">Property</span>=<span class="str">"Foreground"</span> <span class="attr">Value</span>=<span class="str">"#0B0E13"</span><span class="tag">/&gt;</span>
+  <span class="tag">&lt;Setter</span> <span class="attr">Property</span>=<span class="str">"FontWeight"</span> <span class="attr">Value</span>=<span class="str">"Bold"</span><span class="tag">/&gt;</span>
+<span class="tag">&lt;/Style&gt;</span></code></pre>
+
+<!-- ========================================================== -->
+<h2 id="runspaces"><span class="num">08</span>Runspaces async</h2>
+<pre><span class="lang">powershell</span><code><span class="kw">function</span> <span class="fn">Start-AsyncJob</span> {
+    <span class="kw">param</span>([<span class="kw">scriptblock</span>]<span class="var">$Work</span>, [<span class="kw">hashtable</span>]<span class="var">$Args</span> = @{})
+    <span class="var">$rs</span> = [<span class="kw">runspacefactory</span>]::CreateRunspace()
+    <span class="var">$rs</span>.ApartmentState = <span class="str">'STA'</span>
+    <span class="var">$rs</span>.Open()
+    <span class="var">$rs</span>.SessionStateProxy.SetVariable(<span class="str">'sync'</span>, <span class="var">$sync</span>)
+    <span class="kw">foreach</span> (<span class="var">$k</span> <span class="kw">in</span> <span class="var">$Args</span>.Keys) { <span class="var">$rs</span>.SessionStateProxy.SetVariable(<span class="var">$k</span>, <span class="var">$Args</span>[<span class="var">$k</span>]) }
+    <span class="var">$ps</span> = [<span class="kw">powershell</span>]::Create()
+    <span class="var">$ps</span>.Runspace = <span class="var">$rs</span>
+    [<span class="kw">void</span>]<span class="var">$ps</span>.AddScript(<span class="var">$Work</span>)
+    [<span class="kw">void</span>]<span class="var">$ps</span>.BeginInvoke()
+}</code></pre>
+
+<!-- ========================================================== -->
+<h2 id="dispatcher"><span class="num">09</span>Dispatcher</h2>
+<p>Toda mutacion de control desde un worker debe ir por el Dispatcher:</p>
+<pre><span class="lang">powershell</span><code><span class="var">$sync</span>.Window.Dispatcher.Invoke([<span class="kw">action</span>]{
+    <span class="var">$sync</span>.LogBox.AppendText(<span class="str">"line`r`n"</span>)
+    <span class="var">$sync</span>.LogBox.ScrollToEnd()
+})</code></pre>
+<div class="callout danger"><span class="label">err</span><i>The calling thread cannot access this object</i> = falta Dispatcher.</div>
+
+<!-- ========================================================== -->
+<h2 id="console"><span class="num">10</span>Mini consola</h2>
+<p>Output readonly + input + clear. Enter ejecuta. Up/Down history.</p>
+<pre><span class="lang">xaml</span><code><span class="tag">&lt;Border</span> <span class="attr">Grid.Row</span>=<span class="str">"2"</span> <span class="attr">BorderBrush</span>=<span class="str">"{StaticResource Border1}"</span> <span class="attr">BorderThickness</span>=<span class="str">"1"</span>
+        <span class="attr">Background</span>=<span class="str">"#0B0E13"</span><span class="tag">&gt;</span>
+  <span class="tag">&lt;Grid&gt;</span>
+    <span class="tag">&lt;Grid.RowDefinitions&gt;</span>
+      <span class="tag">&lt;RowDefinition</span> <span class="attr">Height</span>=<span class="str">"Auto"</span><span class="tag">/&gt;</span>
+      <span class="tag">&lt;RowDefinition</span> <span class="attr">Height</span>=<span class="str">"*"</span><span class="tag">/&gt;</span>
+      <span class="tag">&lt;RowDefinition</span> <span class="attr">Height</span>=<span class="str">"Auto"</span><span class="tag">/&gt;</span>
+    <span class="tag">&lt;/Grid.RowDefinitions&gt;</span>
+    <span class="tag">&lt;TextBlock</span> <span class="attr">Grid.Row</span>=<span class="str">"0"</span> <span class="attr">Text</span>=<span class="str">"// console"</span> <span class="attr">Foreground</span>=<span class="str">"{StaticResource Accent}"</span>
+               <span class="attr">FontWeight</span>=<span class="str">"Bold"</span> <span class="attr">Margin</span>=<span class="str">"12,8,0,4"</span><span class="tag">/&gt;</span>
+    <span class="tag">&lt;TextBox</span> <span class="attr">x:Name</span>=<span class="str">"ConsoleOut"</span> <span class="attr">Grid.Row</span>=<span class="str">"1"</span> <span class="attr">IsReadOnly</span>=<span class="str">"True"</span>
+             <span class="attr">Background</span>=<span class="str">"Transparent"</span> <span class="attr">BorderThickness</span>=<span class="str">"0"</span>
+             <span class="attr">FontFamily</span>=<span class="str">"Cascadia Mono, Consolas"</span> <span class="attr">FontSize</span>=<span class="str">"13"</span>
+             <span class="attr">VerticalScrollBarVisibility</span>=<span class="str">"Auto"</span> <span class="attr">AcceptsReturn</span>=<span class="str">"True"</span><span class="tag">/&gt;</span>
+    <span class="tag">&lt;Grid</span> <span class="attr">Grid.Row</span>=<span class="str">"2"</span> <span class="attr">Margin</span>=<span class="str">"8,4,8,8"</span><span class="tag">&gt;</span>
+      <span class="tag">&lt;Grid.ColumnDefinitions&gt;</span>
+        <span class="tag">&lt;ColumnDefinition</span> <span class="attr">Width</span>=<span class="str">"Auto"</span><span class="tag">/&gt;</span>
+        <span class="tag">&lt;ColumnDefinition</span> <span class="attr">Width</span>=<span class="str">"*"</span><span class="tag">/&gt;</span>
+        <span class="tag">&lt;ColumnDefinition</span> <span class="attr">Width</span>=<span class="str">"Auto"</span><span class="tag">/&gt;</span>
+      <span class="tag">&lt;/Grid.ColumnDefinitions&gt;</span>
+      <span class="tag">&lt;TextBlock</span> <span class="attr">Text</span>=<span class="str">"PS&gt;"</span> <span class="attr">Foreground</span>=<span class="str">"{StaticResource Accent}"</span>
+                 <span class="attr">FontFamily</span>=<span class="str">"Cascadia Mono"</span> <span class="attr">FontWeight</span>=<span class="str">"Bold"</span>
+                 <span class="attr">VerticalAlignment</span>=<span class="str">"Center"</span> <span class="attr">Margin</span>=<span class="str">"0,0,8,0"</span><span class="tag">/&gt;</span>
+      <span class="tag">&lt;TextBox</span> <span class="attr">x:Name</span>=<span class="str">"ConsoleIn"</span> <span class="attr">Grid.Column</span>=<span class="str">"1"</span> <span class="attr">FontFamily</span>=<span class="str">"Cascadia Mono"</span><span class="tag">/&gt;</span>
+      <span class="tag">&lt;Button</span> <span class="attr">x:Name</span>=<span class="str">"ConsoleClear"</span> <span class="attr">Grid.Column</span>=<span class="str">"2"</span> <span class="attr">Content</span>=<span class="str">"Clear"</span>
+              <span class="attr">Margin</span>=<span class="str">"6,0,0,0"</span> <span class="attr">Style</span>=<span class="str">"{StaticResource GhostButton}"</span><span class="tag">/&gt;</span>
+    <span class="tag">&lt;/Grid&gt;</span>
+  <span class="tag">&lt;/Grid&gt;</span>
+<span class="tag">&lt;/Border&gt;</span></code></pre>
+
+<!-- ========================================================== -->
+<h2 id="exec"><span class="num">11</span>Ejecutor + key handler</h2>
+<pre><span class="lang">powershell</span><code><span class="var">$script</span>:CmdHistory   = <span class="fn">New-Object</span> System.Collections.Generic.List[string]
+<span class="var">$script</span>:CmdHistoryIdx = 0
+
+<span class="kw">function</span> <span class="fn">Invoke-ConsoleCommand</span> {
+    <span class="kw">param</span>([<span class="kw">string</span>]<span class="var">$Cmd</span>)
+    <span class="var">$rs</span> = [<span class="kw">runspacefactory</span>]::CreateRunspace()
+    <span class="var">$rs</span>.ApartmentState = <span class="str">'STA'</span>; <span class="var">$rs</span>.Open()
+    <span class="var">$rs</span>.SessionStateProxy.SetVariable(<span class="str">'sync'</span>, <span class="var">$sync</span>)
+    <span class="var">$rs</span>.SessionStateProxy.SetVariable(<span class="str">'cmd'</span>,  <span class="var">$Cmd</span>)
+    <span class="var">$ps</span> = [<span class="kw">powershell</span>]::Create()
+    <span class="var">$ps</span>.Runspace = <span class="var">$rs</span>
+    [<span class="kw">void</span>]<span class="var">$ps</span>.AddScript({
+        <span class="kw">try</span> {
+            <span class="var">$r</span> = <span class="fn">Invoke-Expression</span> <span class="var">$cmd</span> 2&gt;&amp;1
+            <span class="kw">if</span> (<span class="var">$null</span> -ne <span class="var">$r</span>) {
+                <span class="var">$t</span> = (<span class="var">$r</span> | <span class="fn">Out-String</span>).TrimEnd() + <span class="str">"`r`n"</span>
+                <span class="var">$sync</span>.Window.Dispatcher.Invoke([<span class="kw">action</span>]{
+                    <span class="var">$sync</span>.ConsoleOut.AppendText(<span class="var">$t</span>); <span class="var">$sync</span>.ConsoleOut.ScrollToEnd()
+                })
+            }
+        } <span class="kw">catch</span> {
+            <span class="var">$sync</span>.Window.Dispatcher.Invoke([<span class="kw">action</span>]{
+                <span class="var">$sync</span>.ConsoleOut.AppendText(<span class="str">"ERR: "</span> + <span class="var">$_</span>.Exception.Message + <span class="str">"`r`n"</span>)
+            })
+        }
+    })
+    [<span class="kw">void</span>]<span class="var">$ps</span>.BeginInvoke()
+}
+
+<span class="var">$ctrl</span>.ConsoleIn.Add_KeyDown({
+    <span class="kw">param</span>(<span class="var">$s</span>, <span class="var">$e</span>)
+    <span class="kw">switch</span> (<span class="var">$e</span>.Key) {
+        <span class="str">'Return'</span> {
+            <span class="var">$cmd</span> = <span class="var">$s</span>.Text.Trim()
+            <span class="kw">if</span> (-not <span class="var">$cmd</span>) { <span class="kw">return</span> }
+            <span class="var">$script</span>:CmdHistory.Add(<span class="var">$cmd</span>) | <span class="fn">Out-Null</span>
+            <span class="var">$script</span>:CmdHistoryIdx = <span class="var">$script</span>:CmdHistory.Count
+            <span class="var">$ctrl</span>.ConsoleOut.AppendText(<span class="str">"PS&gt; </span><span class="var">$cmd</span><span class="str">`r`n"</span>)
+            <span class="var">$ctrl</span>.ConsoleOut.ScrollToEnd()
+            <span class="var">$s</span>.Clear()
+            <span class="fn">Invoke-ConsoleCommand</span> <span class="var">$cmd</span>
+            <span class="var">$e</span>.Handled = <span class="var">$true</span>
+        }
+        <span class="str">'Up'</span> {
+            <span class="kw">if</span> (<span class="var">$script</span>:CmdHistoryIdx -gt 0) {
+                <span class="var">$script</span>:CmdHistoryIdx--
+                <span class="var">$s</span>.Text = <span class="var">$script</span>:CmdHistory[<span class="var">$script</span>:CmdHistoryIdx]
+                <span class="var">$s</span>.CaretIndex = <span class="var">$s</span>.Text.Length
+                <span class="var">$e</span>.Handled = <span class="var">$true</span>
+            }
+        }
+        <span class="str">'Down'</span> {
+            <span class="kw">if</span> (<span class="var">$script</span>:CmdHistoryIdx -lt (<span class="var">$script</span>:CmdHistory.Count - 1)) {
+                <span class="var">$script</span>:CmdHistoryIdx++
+                <span class="var">$s</span>.Text = <span class="var">$script</span>:CmdHistory[<span class="var">$script</span>:CmdHistoryIdx]
+                <span class="var">$s</span>.CaretIndex = <span class="var">$s</span>.Text.Length
+                <span class="var">$e</span>.Handled = <span class="var">$true</span>
+            } <span class="kw">else</span> { <span class="var">$s</span>.Clear() }
+        }
+    }
+})
+
+<span class="var">$ctrl</span>.ConsoleClear.Add_Click({ <span class="var">$ctrl</span>.ConsoleOut.Clear() })
+<span class="var">$window</span>.Add_Loaded({ <span class="var">$ctrl</span>.ConsoleIn.Focus() })</code></pre>
+
+<div class="callout warn"><span class="label">seguridad</span><code>Invoke-Expression</code> ejecuta cualquier cosa. OK para input local del propio user. NUNCA usar con input remoto sin sanitizar.</div>
+
+<!-- ========================================================== -->
+<h2 id="launcher"><span class="num">12</span>Launcher .bat</h2>
+<pre><span class="lang">cmd</span><code>@echo off
+start "" powershell.exe -NoLogo -NoProfile -STA -WindowStyle Hidden ^
+    -ExecutionPolicy Bypass -File "%~dp0app.ps1"</code></pre>
+
+<table>
+<tr><th>Flag</th><th>Razon</th></tr>
+<tr><td><code>start ""</code></td><td>Desacopla. Bat termina, GUI vive.</td></tr>
+<tr><td><code>-STA</code></td><td>WPF requiere STA.</td></tr>
+<tr><td><code>-NoProfile</code></td><td>Arranque limpio.</td></tr>
+<tr><td><code>-WindowStyle Hidden</code></td><td>Oculta consola padre.</td></tr>
+</table>
+
+<!-- ========================================================== -->
+<h2 id="pitfalls"><span class="num">13</span>Pitfalls</h2>
+<table>
+<tr><th>Sintoma</th><th>Causa</th><th>Fix</th></tr>
+<tr><td><code>thread must be STA</code></td><td>WPF en MTA</td><td>Lanzar con <code>-STA</code></td></tr>
+<tr><td><code>Cannot access this object</code></td><td>Mutar UI sin Dispatcher</td><td>Wrap en <code>Dispatcher.Invoke</code></td></tr>
+<tr><td>UI congelada</td><td>Trabajo en UI thread</td><td>Mover a runspace</td></tr>
+<tr><td>Caracteres raros</td><td>.ps1 sin BOM</td><td>UTF-8 BOM o ASCII</td></tr>
+<tr><td><code>$Args</code> param crash</td><td>Nombre reservado</td><td>Usar <code>$Rest</code></td></tr>
+<tr><td>JSONC parse falla</td><td>PS5.1 no soporta <code>//</code></td><td>Strip comments antes</td></tr>
+<tr><td>Boton sin respuesta</td><td>Excepcion silenciada</td><td>Try/catch en handler</td></tr>
+</table>
+
+<!-- ========================================================== -->
+<h2 id="csv"><span class="num">14</span>CSV drop-in (integracion)</h2>
+
+<p>Cada fila = pieza autonoma para inyectar en un script <code>.ps1</code> existente.
+Columnas:</p>
+
+<table>
+<tr><th>Col</th><th>Significado</th></tr>
+<tr><td><code>id</code></td><td>Identificador unico</td></tr>
+<tr><td><code>kind</code></td><td><code>xaml</code> | <code>powershell</code> | <code>cmd</code></td></tr>
+<tr><td><code>insert_at</code></td><td>Donde insertarlo en el script existente (ancla)</td></tr>
+<tr><td><code>requires</code></td><td>IDs prerequisitos (separados por <code>;</code>)</td></tr>
+<tr><td><code>snippet</code></td><td>Codigo listo (saltos como <code>\n</code>, <code>"</code> escapado como <code>""</code>)</td></tr>
+</table>
+
+<p>Anclas reconocidas:</p>
+<ul>
+<li><code>xaml.window-resources</code>: dentro de <code>&lt;Window.Resources&gt;</code></li>
+<li><code>xaml.grid-row</code>: una fila adicional al Grid root + entrada en <code>RowDefinitions</code></li>
+<li><code>xaml.action-bar</code>: dentro del StackPanel de botones de accion</li>
+<li><code>ps.before-show</code>: antes de <code>$window.ShowDialog()</code></li>
+<li><code>ps.controls-bind</code>: dentro del bucle <code>foreach ... FindName</code></li>
+<li><code>ps.sync-fields</code>: dentro de <code>[hashtable]::Synchronized(@{ ... })</code></li>
+<li><code>ps.helpers</code>: junto al resto de funciones helper</li>
+<li><code>ps.event-wire</code>: tras carga de XAML, antes de ShowDialog</li>
+</ul>
+
+<div class="csv-wrap">
+<button class="copy-btn" id="copyCsv" type="button">Copy CSV</button>
+<pre class="csv-block"><span class="lang">csv</span><code id="csvData"><span class="header-row">id,kind,insert_at,requires,snippet</span>
+C01,powershell,ps.helpers,,"Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, System.Windows.Forms"
+C02,xaml,xaml.window-resources,,"<SolidColorBrush x:Key=""Accent"" Color=""#4FC3F7""/><SolidColorBrush x:Key=""Border1"" Color=""#2D3743""/><SolidColorBrush x:Key=""Warn"" Color=""#F0883E""/><SolidColorBrush x:Key=""PanelDeep"" Color=""#0B0E13""/>"
+C03,xaml,xaml.window-resources,C02,"<Style x:Key=""GhostButton"" TargetType=""Button""><Setter Property=""Background"" Value=""Transparent""/><Setter Property=""Foreground"" Value=""{StaticResource Accent}""/><Setter Property=""BorderBrush"" Value=""{StaticResource Border1}""/><Setter Property=""BorderThickness"" Value=""1""/><Setter Property=""Padding"" Value=""14,8""/><Setter Property=""Cursor"" Value=""Hand""/><Setter Property=""Template""><Setter.Value><ControlTemplate TargetType=""Button""><Border x:Name=""bd"" Background=""{TemplateBinding Background}"" BorderBrush=""{TemplateBinding BorderBrush}"" BorderThickness=""{TemplateBinding BorderThickness}""><ContentPresenter HorizontalAlignment=""Center"" VerticalAlignment=""Center"" Margin=""{TemplateBinding Padding}""/></Border><ControlTemplate.Triggers><Trigger Property=""IsMouseOver"" Value=""True""><Setter TargetName=""bd"" Property=""Background"" Value=""#1A2733""/></Trigger><Trigger Property=""IsEnabled"" Value=""False""><Setter TargetName=""bd"" Property=""Opacity"" Value=""0.4""/></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter></Style>"
+C04,xaml,xaml.window-resources,C03,"<Style x:Key=""PrimaryButton"" TargetType=""Button"" BasedOn=""{StaticResource GhostButton}""><Setter Property=""Background"" Value=""{StaticResource Accent}""/><Setter Property=""Foreground"" Value=""#0B0E13""/><Setter Property=""FontWeight"" Value=""Bold""/></Style>"
+C05,xaml,xaml.window-resources,C03,"<Style x:Key=""WarningButton"" TargetType=""Button"" BasedOn=""{StaticResource GhostButton}""><Setter Property=""Foreground"" Value=""{StaticResource Warn}""/><Setter Property=""BorderBrush"" Value=""{StaticResource Warn}""/></Style>"
+C06,xaml,xaml.action-bar,C04;C05,"<Button x:Name=""BtnExit"" Content=""Exit"" Style=""{StaticResource GhostButton}"" Margin=""0,0,8,0""/><Button x:Name=""BtnReset"" Content=""Reset"" Style=""{StaticResource WarningButton}"" Margin=""0,0,8,0""/><Button x:Name=""BtnRun"" Content=""Run"" Style=""{StaticResource PrimaryButton}""/>"
+C07,xaml,xaml.grid-row,C02,"<Border Grid.Row=""{ROW_INDEX}"" BorderBrush=""{StaticResource Border1}"" BorderThickness=""1"" Background=""{StaticResource PanelDeep}"" Margin=""0,8""><Grid><Grid.RowDefinitions><RowDefinition Height=""Auto""/><RowDefinition Height=""*""/><RowDefinition Height=""Auto""/></Grid.RowDefinitions><TextBlock Grid.Row=""0"" Text=""// console"" Foreground=""{StaticResource Accent}"" FontWeight=""Bold"" Margin=""12,8,0,4""/><TextBox x:Name=""ConsoleOut"" Grid.Row=""1"" IsReadOnly=""True"" Background=""Transparent"" BorderThickness=""0"" Foreground=""#A8C7E0"" FontFamily=""Cascadia Mono, Consolas"" FontSize=""13"" VerticalScrollBarVisibility=""Auto"" AcceptsReturn=""True"" TextWrapping=""NoWrap""/><Grid Grid.Row=""2"" Margin=""8,4,8,8""><Grid.ColumnDefinitions><ColumnDefinition Width=""Auto""/><ColumnDefinition Width=""*""/><ColumnDefinition Width=""Auto""/></Grid.ColumnDefinitions><TextBlock Text=""PS>"" Foreground=""{StaticResource Accent}"" FontFamily=""Cascadia Mono, Consolas"" FontWeight=""Bold"" VerticalAlignment=""Center"" Margin=""0,0,8,0""/><TextBox x:Name=""ConsoleIn"" Grid.Column=""1"" FontFamily=""Cascadia Mono, Consolas""/><Button x:Name=""ConsoleClear"" Grid.Column=""2"" Content=""Clear"" Margin=""6,0,0,0"" Style=""{StaticResource GhostButton}""/></Grid></Grid></Border>"
+C08,powershell,ps.controls-bind,,"'BtnExit','BtnReset','BtnRun','ConsoleOut','ConsoleIn','ConsoleClear'"
+C09,powershell,ps.sync-fields,,"ConsoleOut = $ctrl.ConsoleOut; ConsoleIn = $ctrl.ConsoleIn; LogBox = $ctrl.LogBox; BtnRun = $ctrl.BtnRun; BtnReset = $ctrl.BtnReset"
+C10,powershell,ps.helpers,,"function Start-AsyncJob { param([scriptblock]$Work, [hashtable]$Args = @{}); $rs = [runspacefactory]::CreateRunspace(); $rs.ApartmentState = 'STA'; $rs.ThreadOptions = 'ReuseThread'; $rs.Open(); $rs.SessionStateProxy.SetVariable('sync', $sync); foreach ($k in $Args.Keys) { $rs.SessionStateProxy.SetVariable($k, $Args[$k]) }; $ps = [powershell]::Create(); $ps.Runspace = $rs; [void]$ps.AddScript($Work); [void]$ps.BeginInvoke() }"
+C11,powershell,ps.helpers,,"function Write-Log { param([string]$Msg); $sync.Window.Dispatcher.Invoke([action]{ $sync.LogBox.AppendText(""$Msg`r`n""); $sync.LogBox.ScrollToEnd() }) }"
+C12,powershell,ps.helpers,,"function Set-Status { param([string]$Text, [int]$Pct = -1); $sync.Window.Dispatcher.Invoke([action]{ $sync.StatusText.Text = $Text; if ($Pct -ge 0) { $sync.Progress.Value = $Pct } }) }"
+C13,powershell,ps.helpers,,"$script:CmdHistory = New-Object System.Collections.Generic.List[string]; $script:CmdHistoryIdx = 0"
+C14,powershell,ps.helpers,C13,"function Invoke-ConsoleCommand { param([string]$Cmd); $rs = [runspacefactory]::CreateRunspace(); $rs.ApartmentState = 'STA'; $rs.Open(); $rs.SessionStateProxy.SetVariable('sync', $sync); $rs.SessionStateProxy.SetVariable('cmd', $Cmd); $ps = [powershell]::Create(); $ps.Runspace = $rs; [void]$ps.AddScript({ try { $r = Invoke-Expression $cmd 2>&1; if ($null -ne $r) { $t = ($r | Out-String).TrimEnd() + ""`r`n""; $sync.Window.Dispatcher.Invoke([action]{ $sync.ConsoleOut.AppendText($t); $sync.ConsoleOut.ScrollToEnd() }) } } catch { $sync.Window.Dispatcher.Invoke([action]{ $sync.ConsoleOut.AppendText('ERR: ' + $_.Exception.Message + ""`r`n""); $sync.ConsoleOut.ScrollToEnd() }) } }); [void]$ps.BeginInvoke() }"
+C15,powershell,ps.event-wire,C14,"$ctrl.ConsoleIn.Add_KeyDown({ param($s,$e); switch ($e.Key) { 'Return' { $cmd = $s.Text.Trim(); if (-not $cmd) { return }; $script:CmdHistory.Add($cmd) | Out-Null; $script:CmdHistoryIdx = $script:CmdHistory.Count; $ctrl.ConsoleOut.AppendText(""PS> $cmd`r`n""); $ctrl.ConsoleOut.ScrollToEnd(); $s.Clear(); Invoke-ConsoleCommand $cmd; $e.Handled = $true } 'Up' { if ($script:CmdHistoryIdx -gt 0) { $script:CmdHistoryIdx--; $s.Text = $script:CmdHistory[$script:CmdHistoryIdx]; $s.CaretIndex = $s.Text.Length; $e.Handled = $true } } 'Down' { if ($script:CmdHistoryIdx -lt ($script:CmdHistory.Count - 1)) { $script:CmdHistoryIdx++; $s.Text = $script:CmdHistory[$script:CmdHistoryIdx]; $s.CaretIndex = $s.Text.Length; $e.Handled = $true } else { $s.Clear() } } } })"
+C16,powershell,ps.event-wire,,"$ctrl.ConsoleClear.Add_Click({ $ctrl.ConsoleOut.Clear() })"
+C17,powershell,ps.event-wire,,"$ctrl.BtnExit.Add_Click({ $window.Close() })"
+C18,powershell,ps.event-wire,C10,"$ctrl.BtnRun.Add_Click({ $ctrl.BtnRun.IsEnabled = $false; Start-AsyncJob -Work { Write-Log 'Working...'; Start-Sleep 2; Write-Log 'Done.'; $sync.Window.Dispatcher.Invoke([action]{ $sync.BtnRun.IsEnabled = $true }) } })"
+C19,powershell,ps.event-wire,,"$ctrl.BtnReset.Add_Click({ $r = [System.Windows.MessageBox]::Show('Reset?','Confirm',[System.Windows.MessageBoxButton]::YesNo,[System.Windows.MessageBoxImage]::Warning); if ($r -eq [System.Windows.MessageBoxResult]::Yes) { Write-Log 'Reset OK' } })"
+C20,powershell,ps.before-show,,"$window.Add_Loaded({ $ctrl.ConsoleIn.Focus() })"
+</code></pre>
+</html>
