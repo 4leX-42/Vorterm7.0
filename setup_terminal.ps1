@@ -984,48 +984,74 @@ $controls.InstallBtn.Add_Click({
         }
 
         # ---- Detect actual Nerd Font name ----------------
+        # Windows Terminal usa DirectWrite. JetBrainsMono Nerd Font v3 tiene 2 nombres
+        # en la tabla "name" del TTF:
+        #   - name ID 1  (GDI family):           "JetBrainsMono NFM" (lo que enumera GDI+)
+        #   - name ID 16 (typographic / DWrite): "JetBrainsMono Nerd Font Mono" (lo que WT espera)
+        # Si escribimos el GDI family, WT muestra warning "no se puede encontrar la fuente"
+        # y cae al fallback. Solucion: mapear GDI family -> typographic family.
         function Get-InstalledNerdFont {
-            $fonts = @()
-            foreach ($hive in 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts',
-                              'HKCU:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts') {
-                if (Test-Path $hive) {
-                    $fonts += (Get-ItemProperty $hive).PSObject.Properties |
-                              Where-Object { $_.Name -notlike 'PS*' } |
-                              Select-Object -ExpandProperty Name
+            try { Add-Type -AssemblyName System.Drawing -ErrorAction Stop } catch {}
+            $gdi = @()
+            try {
+                $gdi = [System.Drawing.Text.InstalledFontCollection]::new().Families.Name
+            } catch {
+                Write-Log "  [!!] GDI+ font enum failed: $($_.Exception.Message)"
+            }
+
+            # Mapping GDI family -> typographic (DirectWrite) family.
+            # Nerd Font v3 convention: NFM=Mono, NFP=Propo, NF=full.
+            $gdiToTypo = [ordered]@{
+                'JetBrainsMono NFM'    = 'JetBrainsMono Nerd Font Mono'
+                'JetBrainsMonoNL NFM'  = 'JetBrainsMonoNL Nerd Font Mono'
+                'JetBrainsMono NFP'    = 'JetBrainsMono Nerd Font Propo'
+                'JetBrainsMonoNL NFP'  = 'JetBrainsMonoNL Nerd Font Propo'
+                'JetBrainsMono NF'     = 'JetBrainsMono Nerd Font'
+                'JetBrainsMonoNL NF'   = 'JetBrainsMonoNL Nerd Font'
+                'CaskaydiaCove NF'     = 'CaskaydiaCove Nerd Font'
+                'CaskaydiaCove NFM'    = 'CaskaydiaCove Nerd Font Mono'
+                'CaskaydiaMono NF'     = 'CaskaydiaMono Nerd Font'
+                'FiraCode NFM'         = 'FiraCode Nerd Font Mono'
+                'FiraCode NF'          = 'FiraCode Nerd Font'
+                'Hack NFM'             = 'Hack Nerd Font Mono'
+                'Hack NF'              = 'Hack Nerd Font'
+            }
+
+            # Prioridad: Mono > Propo > full. Iterar mapping en orden.
+            foreach ($gdiName in $gdiToTypo.Keys) {
+                if ($gdi -contains $gdiName) {
+                    $typo = $gdiToTypo[$gdiName]
+                    Write-Log "  [OK] GDI '$gdiName' -> DWrite typographic '$typo'"
+                    return $typo
                 }
             }
-            # Prioridad: Nerd Font Mono (mejor para terminal) > Nerd Font full > Propo > NFM > NF.
-            # JetBrainsMono Nerd Font v3 ships variantes "Mono" / "Propo" como familias separadas,
-            # detectarlas explicitamente para que Windows Terminal no muestre warning de fuente.
-            $patterns = @(
-                @{ Rx = '^JetBrainsMono\s+Nerd\s+Font\s+Mono\s+Regular'  ; Family = 'JetBrainsMono Nerd Font Mono'  },
-                @{ Rx = '^JetBrainsMonoNL\s+Nerd\s+Font\s+Mono\s+Regular'; Family = 'JetBrainsMonoNL Nerd Font Mono'},
-                @{ Rx = '^JetBrainsMono\s+Nerd\s+Font\s+Propo\s+Regular' ; Family = 'JetBrainsMono Nerd Font Propo' },
-                @{ Rx = '^JetBrainsMono\s+Nerd\s+Font\s+Regular(?!\s+(Mono|Propo))' ; Family = 'JetBrainsMono Nerd Font' },
-                @{ Rx = '^JetBrainsMono\s+NFM\s+Regular'                 ; Family = 'JetBrainsMono NFM'             },
-                @{ Rx = '^JetBrainsMono\s+NFP\s+Regular'                 ; Family = 'JetBrainsMono NFP'             },
-                @{ Rx = '^JetBrainsMono\s+NL\s+Regular'                  ; Family = 'JetBrainsMono NL'              },
-                @{ Rx = '^JetBrainsMono\s+NF\s+Regular'                  ; Family = 'JetBrainsMono NF'              }
+
+            # Algunas instalaciones (Nerd Font v2 o variantes especiales) ya exponen
+            # el typographic name como GDI family. Probar match directo.
+            $directPriority = @(
+                'JetBrainsMono Nerd Font Mono',
+                'JetBrainsMonoNL Nerd Font Mono',
+                'JetBrainsMono Nerd Font Propo',
+                'JetBrainsMono Nerd Font',
+                'CaskaydiaCove Nerd Font Mono',
+                'FiraCode Nerd Font Mono',
+                'Hack Nerd Font Mono'
             )
-            foreach ($p in $patterns) {
-                if ($fonts -match $p.Rx) { return $p.Family }
+            foreach ($cand in $directPriority) {
+                if ($gdi -contains $cand) { return $cand }
             }
-            # Fallback generico para cualquier Nerd Font Mono instalada
-            $any = $fonts | Where-Object {
-                $_ -match '(?i)(Nerd\s+Font\s+Mono|\bNFM\b)' -and
-                $_ -notmatch 'Bold|Italic|Light|Thin|Medium|Extra|Semi'
-            } | Select-Object -First 1
-            if (-not $any) {
-                $any = $fonts | Where-Object {
-                    $_ -match '(?i)(Nerd|\bN[FL][MP]?\b)' -and
-                    $_ -notmatch 'Bold|Italic|Light|Thin|Medium|Extra|Semi'
-                } | Select-Object -First 1
-            }
-            if ($any) { return ($any -replace '\s+Regular\s*\(TrueType\)\s*$','' -replace '\s*\(TrueType\)\s*$','').Trim() }
+
+            # Fallback generico: cualquier "Nerd Font Mono" en GDI+
+            $hit = $gdi | Where-Object { $_ -match '(?i)Nerd\s+Font\s+Mono$' } | Select-Object -First 1
+            if ($hit) { return $hit }
+            $hit = $gdi | Where-Object { $_ -match '(?i)Nerd\s+Font' } | Select-Object -First 1
+            if ($hit) { return $hit }
+
+            Write-Log "  [!!] No Nerd Font detected. Falling back to default DWrite name."
             return 'JetBrainsMono Nerd Font Mono'
         }
         $nerdFontFace = Get-InstalledNerdFont
-        Write-Log "  [OK] detected font face: '$nerdFontFace'"
+        Write-Log "  [OK] detected font face (DWrite typographic): '$nerdFontFace'"
 
         # ---- PowerShell profile --------------------------
         if ($opts.WriteProfile) {
@@ -1060,7 +1086,8 @@ if (Test-Path `$_ompExe) {
     if (-not (Test-Path `$_ompTheme) -and `$env:POSH_THEMES_PATH) {
         `$_ompTheme = Join-Path `$env:POSH_THEMES_PATH 'darkblood.omp.json'
     }
-    `$_ompCache = "`$env:LOCALAPPDATA\Vorterm\omp-init.ps1"
+    `$_themeHash = [BitConverter]::ToString([Security.Cryptography.MD5]::Create().ComputeHash([Text.Encoding]::UTF8.GetBytes(`$_ompTheme))).Replace('-','').Substring(0,8)
+    `$_ompCache  = "`$env:LOCALAPPDATA\Vorterm\omp-init-`$_themeHash.ps1"
     `$_cacheDir = Split-Path `$_ompCache
     if (-not (Test-Path `$_cacheDir)) { New-Item -ItemType Directory -Path `$_cacheDir -Force | Out-Null }
     `$_themeMtime = if (Test-Path `$_ompTheme) { (Get-Item `$_ompTheme).LastWriteTimeUtc.Ticks } else { 0 }
