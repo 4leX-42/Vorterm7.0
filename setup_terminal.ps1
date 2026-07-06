@@ -2282,20 +2282,27 @@ foreach ($n in 'PathBox','BrowseBtn','LogBox','Progress','StatusText','ExitBtn',
 # crecer con el contenido, el log alargaria la pagina entera y la vista no
 # seguiria al texto; asi el RichTextBox scrollea internamente y ScrollToEnd
 # mantiene la consola pegada a la ultima linea.
-$script:RootBaseMin = 710      # layout minimo con PathsPanel vacio (medido)
-$script:PathsBaseH  = 0
 function Update-RootHeight {
     $vh = $controls.RootScroll.ViewportHeight
     if ($vh -le 0) { return }
-    $extra = 0
-    if ($controls.PathsPanel.ActualHeight -gt 0) {
-        if ($script:PathsBaseH -eq 0) { $script:PathsBaseH = $controls.PathsPanel.ActualHeight }
-        $extra = [Math]::Max(0, $controls.PathsPanel.ActualHeight - $script:PathsBaseH)
+    # Minimo REAL medido: suma de las filas Auto (header, path, config con
+    # PathsPanel incluido, progreso, botones) + minimo de la fila consola.
+    # Nada de constantes: se adapta a DPI, ancho y contenido dinamico.
+    $rows = $controls.RootGrid.RowDefinitions
+    $autoSum = 0.0
+    foreach ($i in 0,1,2,4,5) { $autoSum += $rows[$i].ActualHeight }
+    $consoleMin = $rows[3].MinHeight
+    $needed = $autoSum + $consoleMin
+    $newH = [Math]::Max($vh, $needed)
+    if ([Math]::Abs($controls.RootGrid.Height - $newH) -gt 0.5 -or
+        [double]::IsNaN($controls.RootGrid.Height)) {
+        $controls.RootGrid.Height = $newH
     }
-    $controls.RootGrid.Height = [Math]::Max($vh, $script:RootBaseMin + $extra)
 }
 $controls.RootScroll.Add_SizeChanged({ Update-RootHeight })
 $controls.PathsPanel.Add_SizeChanged({ Update-RootHeight })
+# Primer calculo cuando el layout inicial ya tiene medidas reales
+$window.Add_ContentRendered({ Update-RootHeight })
 
 # ------ Log document (RichTextBox con colores) ---------------
 function Reset-LogDocument {
