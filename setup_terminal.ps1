@@ -1636,7 +1636,7 @@ if ($NoGui) {
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Vorterm 7.1"
         Height="940" Width="1700"
-        MinHeight="800" MinWidth="980"
+        MinHeight="560" MinWidth="980"
         WindowStartupLocation="CenterScreen"
         Background="#050506"
         FontFamily="Inter, Segoe UI"
@@ -1941,7 +1941,7 @@ if ($NoGui) {
         <RowDefinition Height="Auto"/>
         <RowDefinition Height="Auto"/>
         <RowDefinition Height="Auto"/>
-        <RowDefinition Height="*" MinHeight="200"/>
+        <RowDefinition Height="*" MinHeight="120"/>
         <RowDefinition Height="Auto"/>
         <RowDefinition Height="Auto"/>
       </Grid.RowDefinitions>
@@ -2126,7 +2126,11 @@ $wa = [System.Windows.SystemParameters]::WorkArea
 $marginX = 40
 $marginY = 22
 $window.Width  = [Math]::Min(1800, [Math]::Max(980, $wa.Width  - $marginX * 2))
-$window.Height = [Math]::Min(1240, [Math]::Max(820, $wa.Height - $marginY * 2))
+$window.Height = [Math]::Min(1240, $wa.Height - $marginY * 2)
+# Recenter dentro del area de trabajo (CenterScreen se calcula antes de este resize,
+# asi que en pantallas chicas la ventana quedaba descentrada / con el borde inferior fuera)
+$window.Left = $wa.Left + [Math]::Max(0, ($wa.Width  - $window.Width)  / 2)
+$window.Top  = $wa.Top  + [Math]::Max(0, ($wa.Height - $window.Height) / 2)
 
 $controls = @{}
 foreach ($n in 'PathBox','BrowseBtn','LogBox','Progress','StatusText','ExitBtn','ResetBtn','InstallBtn','PauseBtn',
