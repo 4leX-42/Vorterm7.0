@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>WPF + PowerShell GUI guide</title>
+<title>Vorterm 7.0 — guia de uso</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
 :root {
@@ -25,94 +25,139 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
-  font-size: 14px;
-  line-height: 1.55;
+  font-size: 17px;
+  line-height: 1.6;
 }
-.layout { display: grid; grid-template-columns: 240px 1fr; max-width: 1320px; margin: 0 auto; }
+.layout { display: grid; grid-template-columns: 290px 1fr; max-width: 1560px; margin: 0 auto; }
 aside {
   background: var(--panel);
   border-right: 1px solid var(--border);
-  padding: 22px 18px;
+  padding: 28px 22px;
   position: sticky; top: 0; height: 100vh; overflow-y: auto;
 }
-aside .logo { font-family: 'Cascadia Code', monospace; font-size: 11px; color: var(--accent); letter-spacing: 2px; }
-aside h1 { font-size: 16px; margin: 4px 0 18px 0; font-weight: 600; }
-aside nav { font-size: 12px; }
+aside .logo { font-family: 'Cascadia Code', monospace; font-size: 13px; color: var(--accent); letter-spacing: 2px; }
+aside h1 { font-size: 22px; margin: 6px 0 22px 0; font-weight: 600; }
+aside nav { font-size: 15px; }
 aside nav a {
   display: block; color: var(--muted); text-decoration: none;
-  padding: 4px 10px; border-left: 2px solid transparent; border-radius: 0 3px 3px 0;
+  padding: 6px 12px; border-left: 2px solid transparent; border-radius: 0 3px 3px 0;
 }
 aside nav a:hover, aside nav a.active { color: var(--accent); border-left-color: var(--accent); background: rgba(79,195,247,0.06); }
-aside nav .group { text-transform: uppercase; font-size: 10px; letter-spacing: 1.5px; color: var(--muted); padding: 12px 10px 4px; font-weight: 700; opacity: 0.6; }
+aside nav .group { text-transform: uppercase; font-size: 12px; letter-spacing: 1.6px; color: var(--muted); padding: 16px 12px 6px; font-weight: 700; opacity: 0.7; }
 
-main { padding: 36px 48px 80px 48px; max-width: 920px; }
-header.hero { border-bottom: 1px solid var(--border); padding-bottom: 18px; margin-bottom: 28px; }
+main { padding: 44px 60px 100px 60px; max-width: 1080px; }
+header.hero { border-bottom: 1px solid var(--border); padding-bottom: 22px; margin-bottom: 34px; }
 header.hero .tag {
-  display: inline-block; font-family: 'Cascadia Code', monospace; font-size: 10px;
-  color: var(--accent); border: 1px solid var(--accent); padding: 2px 8px;
-  letter-spacing: 2px; margin-bottom: 10px;
+  display: inline-block; font-family: 'Cascadia Code', monospace; font-size: 12px;
+  color: var(--accent); border: 1px solid var(--accent); padding: 3px 10px;
+  letter-spacing: 2px; margin-bottom: 12px;
 }
-header.hero h1 { font-size: 28px; margin: 0 0 8px 0; font-weight: 700; letter-spacing: -0.3px; }
-header.hero p { color: var(--muted); margin: 0; font-size: 14px; }
+header.hero h1 { font-size: 36px; margin: 0 0 10px 0; font-weight: 700; letter-spacing: -0.3px; }
+header.hero p { color: var(--muted); margin: 0; font-size: 17px; }
 
 h2 {
-  font-size: 19px; margin: 36px 0 12px; padding-bottom: 8px;
+  font-size: 25px; margin: 44px 0 16px; padding-bottom: 10px;
   border-bottom: 1px solid var(--border); font-weight: 700; scroll-margin-top: 24px;
 }
-h2 .num { color: var(--accent); font-family: 'Cascadia Code', monospace; font-size: 13px; margin-right: 10px; opacity: 0.7; }
-h3 { font-size: 15px; margin: 18px 0 8px; font-weight: 600; color: var(--accent-hi); }
-p { margin: 0 0 10px 0; }
-ul, ol { padding-left: 20px; margin: 6px 0 12px; }
-li { margin-bottom: 4px; }
+h2 .num { color: var(--accent); font-family: 'Cascadia Code', monospace; font-size: 17px; margin-right: 12px; opacity: 0.7; }
+h3 { font-size: 19px; margin: 22px 0 10px; font-weight: 600; color: var(--accent-hi); }
+p { margin: 0 0 12px 0; }
+ul, ol { padding-left: 24px; margin: 8px 0 14px; }
+li { margin-bottom: 6px; }
 
 a { color: var(--accent); text-decoration: none; border-bottom: 1px dotted var(--accent); }
 
 code {
-  font-family: 'Cascadia Code', 'Consolas', monospace; font-size: 12px;
-  background: var(--panel-2); padding: 1px 5px; border-radius: 3px;
+  font-family: 'Cascadia Code', 'Consolas', monospace; font-size: 14.5px;
+  background: var(--panel-2); padding: 2px 6px; border-radius: 3px;
   border: 1px solid var(--border); color: var(--accent);
 }
 
 pre {
   background: var(--panel-2); border: 1px solid var(--border); border-left: 3px solid var(--accent);
-  border-radius: 3px; padding: 12px 16px; overflow-x: auto;
-  font-family: 'Cascadia Code', monospace; font-size: 12px; line-height: 1.5;
-  margin: 8px 0 14px; position: relative;
+  border-radius: 3px; padding: 14px 18px; overflow-x: auto;
+  font-family: 'Cascadia Code', monospace; font-size: 14px; line-height: 1.55;
+  margin: 10px 0 16px; position: relative;
 }
-pre code { background: none; padding: 0; border: none; color: var(--text); font-size: 12px; }
-pre .lang { position: absolute; top: 6px; right: 10px; font-size: 9px; letter-spacing: 2px; color: var(--muted); text-transform: uppercase; }
+pre code { background: none; padding: 0; border: none; color: var(--text); font-size: 14px; }
+pre .lang { position: absolute; top: 7px; right: 12px; font-size: 11px; letter-spacing: 2px; color: var(--muted); text-transform: uppercase; }
 
 .kw{color:#C792EA} .str{color:#C3E88D} .num{color:#F78C6C} .cmt{color:#6E7681;font-style:italic}
 .fn{color:#82AAFF} .tag{color:#FF5370} .attr{color:#81D4FA} .var{color:#F0883E}
 
-table { width: 100%; border-collapse: collapse; margin: 8px 0 16px; font-size: 12px; }
-th, td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; vertical-align: top; }
-th { background: var(--panel); color: var(--accent); font-size: 10px; letter-spacing: 1px; text-transform: uppercase; }
+table { width: 100%; border-collapse: collapse; margin: 10px 0 18px; font-size: 14.5px; }
+th, td { border: 1px solid var(--border); padding: 10px 14px; text-align: left; vertical-align: top; }
+th { background: var(--panel); color: var(--accent); font-size: 12px; letter-spacing: 1px; text-transform: uppercase; }
 tr:nth-child(even) td { background: rgba(255,255,255,0.012); }
 
 .callout {
   border-left: 3px solid var(--accent); background: rgba(79,195,247,0.05);
-  padding: 10px 14px; margin: 12px 0; border-radius: 0 3px 3px 0; font-size: 13px;
+  padding: 12px 16px; margin: 14px 0; border-radius: 0 3px 3px 0; font-size: 16px;
 }
 .callout.warn { border-left-color: var(--warn); background: rgba(240,136,62,0.05); }
 .callout.danger { border-left-color: var(--err); background: rgba(248,81,73,0.05); }
-.callout .label { font-family: 'Cascadia Code', monospace; font-size: 10px; font-weight: 700; letter-spacing: 2px; color: var(--accent); margin-right: 6px; text-transform: uppercase; }
+.callout .label { font-family: 'Cascadia Code', monospace; font-size: 12px; font-weight: 700; letter-spacing: 2px; color: var(--accent); margin-right: 8px; text-transform: uppercase; }
 .callout.warn .label { color: var(--warn); }
 .callout.danger .label { color: var(--err); }
 
 .csv-wrap { position: relative; }
 .csv-wrap .copy-btn {
-  position: absolute; top: 8px; right: 10px; z-index: 5;
+  position: absolute; top: 10px; right: 12px; z-index: 5;
   background: var(--panel); color: var(--accent); border: 1px solid var(--accent);
-  font-family: 'Cascadia Code', monospace; font-size: 11px; padding: 5px 12px;
+  font-family: 'Cascadia Code', monospace; font-size: 13px; padding: 6px 14px;
   cursor: pointer; border-radius: 3px; letter-spacing: 1px; transition: all 0.15s;
 }
 .csv-wrap .copy-btn:hover { background: var(--accent); color: var(--panel-2); }
 .csv-wrap .copy-btn.copied { background: var(--ok); border-color: var(--ok); color: var(--panel-2); }
-pre.csv-block { font-size: 11px; max-height: 540px; padding-top: 38px; }
+pre.csv-block { font-size: 13px; max-height: 620px; padding-top: 44px; }
 pre.csv-block .header-row { color: var(--accent); font-weight: 700; }
 
-footer { border-top: 1px solid var(--border); margin-top: 48px; padding-top: 18px; color: var(--muted); font-size: 12px; }
+/* ----- Path table (Vorterm profile/themes section) ----- */
+table.paths { font-size: 14px; }
+table.paths td.path-cell { font-family: 'Cascadia Code', monospace; word-break: break-all; font-size: 13.5px; }
+table.paths td.actions { white-space: nowrap; }
+.btn-mini {
+  display: inline-block; background: var(--panel-2); color: var(--accent);
+  border: 1px solid var(--border); font-family: 'Cascadia Code', monospace;
+  font-size: 12.5px; padding: 5px 11px; border-radius: 3px; letter-spacing: 1px;
+  cursor: pointer; text-decoration: none; margin: 0 2px; transition: all 0.12s;
+}
+.btn-mini:hover { background: var(--accent); color: var(--panel-2); border-color: var(--accent); }
+.btn-mini.copied { background: var(--ok); border-color: var(--ok); color: var(--panel-2); }
+a.btn-mini { border-bottom: 1px solid var(--border); }
+a.btn-mini:hover { border-bottom-color: var(--accent); }
+.theme-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; margin: 18px 0; }
+.theme-card {
+  background: var(--panel-2); border: 1px solid var(--border); border-left: 3px solid var(--accent);
+  padding: 14px 18px; border-radius: 0 3px 3px 0;
+}
+.theme-card h4 { margin: 0 0 8px 0; font-size: 17px; color: var(--accent-hi); font-weight: 600; }
+.theme-card p { font-size: 14.5px; margin: 0 0 10px; color: var(--muted); }
+.theme-card .links { display: flex; gap: 8px; flex-wrap: wrap; }
+ol.steps li { margin-bottom: 10px; }
+ol.steps code { font-size: 13.5px; }
+
+footer { border-top: 1px solid var(--border); margin-top: 56px; padding-top: 22px; color: var(--muted); font-size: 14px; }
+
+details.dev {
+  margin: 40px 0 16px; border: 1px solid var(--border); border-radius: 4px;
+  background: rgba(255,255,255,0.015);
+}
+details.dev summary {
+  cursor: pointer; padding: 16px 20px; font-weight: 600; font-size: 17px;
+  color: var(--accent); list-style: none; user-select: none;
+}
+details.dev summary::-webkit-details-marker { display: none; }
+details.dev summary::before { content: '▶ '; font-size: 12px; color: var(--muted); margin-right: 8px; }
+details.dev[open] summary::before { content: '▼ '; }
+details.dev .dev-body { padding: 0 22px 22px; border-top: 1px solid var(--border); }
+
+.fix-card {
+  background: var(--panel-2); border: 1px solid var(--border); border-left: 3px solid var(--warn);
+  padding: 14px 18px; margin: 14px 0; border-radius: 0 4px 4px 0;
+}
+.fix-card h4 { margin: 0 0 6px; font-size: 17px; color: var(--accent-hi); }
+.fix-card .sym { font-style: italic; color: var(--muted); font-size: 14.5px; margin-bottom: 8px; }
 
 @media print { aside { display: none; } .layout { grid-template-columns: 1fr; } }
 </style>
@@ -121,48 +166,230 @@ footer { border-top: 1px solid var(--border); margin-top: 48px; padding-top: 18p
 <div class="layout">
 
 <aside>
-  <div class="logo">// guide</div>
-  <h1>WPF + PowerShell</h1>
+  <div class="logo">// vorterm 7.0</div>
+  <h1>Guia de uso</h1>
   <nav>
-    <div class="group">Base</div>
-    <a href="#tldr">TL;DR</a>
-    <a href="#stack">Stack</a>
-    <a href="#assemblies">Assemblies</a>
-    <a href="#arch">Arquitectura</a>
-
-    <div class="group">UI</div>
-    <a href="#xaml">XAML inline</a>
-    <a href="#layout">Layout</a>
-    <a href="#buttons">Botones</a>
-    <a href="#styling">Theming</a>
-
-    <div class="group">Async</div>
-    <a href="#runspaces">Runspaces</a>
-    <a href="#dispatcher">Dispatcher</a>
-
-    <div class="group">Mini consola</div>
-    <a href="#console">Panel + input</a>
-    <a href="#exec">Ejecutor</a>
-
-    <div class="group">Deploy</div>
-    <a href="#launcher">Launcher</a>
-    <a href="#pitfalls">Pitfalls</a>
-
-    <div class="group">Integracion</div>
-    <a href="#csv">CSV drop-in</a>
+    <a href="#que-es">Que es</a>
+    <a href="#instalar">Instalar</a>
+    <a href="#vorterm-paths">Rutas clave</a>
+    <a href="#vorterm-change">Cambiar tema</a>
+    <a href="#vorterm-themes">Catalogo temas</a>
+    <a href="#fix">Problemas comunes</a>
+    <a href="#desinstalar">Desinstalar</a>
+    <a href="#dev">Para devs</a>
   </nav>
 </aside>
 
 <main>
 
 <header class="hero">
-  <div class="tag">v1.1 / integration guide</div>
-  <h1>WPF + PowerShell GUI</h1>
-  <p>Componentes drop-in para inyectar GUI WPF + mini consola en cualquier script .ps1 existente. Sin compilacion, sin dependencias.</p>
+  <div class="tag">v7.0 / vorterm</div>
+  <h1>Vorterm 7.0</h1>
+  <p>Setup de Windows Terminal + PowerShell 7 + oh-my-posh + Nerd Font, en un GUI. Profile optimizado, cache OMP, lazy load de modulos. Esta guia: como usarlo, donde estan las cosas, como cambiar el tema.</p>
 </header>
 
 <!-- ========================================================== -->
-<h2 id="tldr"><span class="num">00</span>TL;DR</h2>
+<h2 id="que-es"><span class="num">01</span>Que es</h2>
+<p>Un script con GUI que deja Windows Terminal listo en 1 click:</p>
+<ul>
+<li><b>PowerShell 7</b> instalado y por defecto.</li>
+<li><b>Nerd Font</b> (JetBrainsMono) para iconos y glyphs en el prompt.</li>
+<li><b>oh-my-posh</b> con tema <code>darkblood</code> (cambiable, ver mas abajo).</li>
+<li><b>Profile optimizado</b>: cache de inicio, lazy load de <code>posh-git</code> + <code>Terminal-Icons</code>, aliases utiles, fallback prompt.</li>
+<li><b>Settings.json</b> de Windows Terminal parcheado (font correcto, comandline pwsh, dir inicial).</li>
+</ul>
+
+<!-- ========================================================== -->
+<h2 id="instalar"><span class="num">02</span>Instalar</h2>
+<ol>
+<li>Doble click en <code>INSTALAR.bat</code> (o ejecutar <code>setup_terminal.ps1</code> en pwsh elevada).</li>
+<li>En la GUI: marcar componentes, pulsar <b>Run</b>.</li>
+<li>Cerrar todas las ventanas de Windows Terminal y reabrir.</li>
+</ol>
+<div class="callout warn"><span class="label">reabrir</span>Tras instalar, <b>cierra todas</b> las ventanas WT. Una sola pestaña abierta puede mantener el font/theme viejos cargados.</div>
+
+<!-- ========================================================== -->
+<h2 id="vorterm-paths"><span class="num">03</span>Rutas clave</h2>
+
+<p>Rutas que usa <code>setup_terminal.ps1</code>. Click <b>Abrir</b> lanza explorer/editor. Click <b>Copy</b> copia path al portapapeles.</p>
+
+<div class="callout"><span class="label">tip</span>Si los enlaces <code>file:///</code> no abren (politica del navegador), copia el path y pega en explorer / pwsh.</div>
+
+<h3>PowerShell profile</h3>
+<table class="paths">
+<tr><th>Host</th><th>Path</th><th>Acciones</th></tr>
+<tr>
+  <td>PS 7 (pwsh)</td>
+  <td class="path-cell">%USERPROFILE%\Documents\PowerShell\Microsoft.PowerShell_profile.ps1</td>
+  <td class="actions">
+    <button class="btn-mini copy-path" data-pwsh="notepad $PROFILE">Copy cmd</button>
+    <a class="btn-mini" href="file:///C:/Users/" title="Abrir Documents">Abrir Docs</a>
+  </td>
+</tr>
+<tr>
+  <td>PS 5.1</td>
+  <td class="path-cell">%USERPROFILE%\Documents\WindowsPowerShell\Microsoft.PowerShell_profile.ps1</td>
+  <td class="actions">
+    <button class="btn-mini copy-path" data-pwsh="notepad &quot;$env:USERPROFILE\Documents\WindowsPowerShell\Microsoft.PowerShell_profile.ps1&quot;">Copy cmd</button>
+  </td>
+</tr>
+</table>
+
+<p>Atajo dentro de pwsh: abrir profile activo en notepad:</p>
+<pre><span class="lang">powershell</span><code><span class="fn">notepad</span> <span class="var">$PROFILE</span>
+<span class="cmt"># o ver paths de los 4 hosts:</span>
+<span class="var">$PROFILE</span> | <span class="fn">Format-List</span> *</code></pre>
+
+<h3>oh-my-posh: temas + cache</h3>
+<table class="paths">
+<tr><th>Recurso</th><th>Path</th><th>Acciones</th></tr>
+<tr>
+  <td>Carpeta temas (user)</td>
+  <td class="path-cell">%USERPROFILE%\.poshthemes\</td>
+  <td class="actions">
+    <button class="btn-mini copy-path" data-pwsh="explorer &quot;$env:USERPROFILE\.poshthemes&quot;">Copy cmd</button>
+    <a class="btn-mini" href="file:///C:/Users/">Abrir</a>
+  </td>
+</tr>
+<tr>
+  <td>Tema activo (Vorterm)</td>
+  <td class="path-cell">%USERPROFILE%\.poshthemes\darkblood.omp.json</td>
+  <td class="actions">
+    <button class="btn-mini copy-path" data-pwsh="notepad &quot;$env:USERPROFILE\.poshthemes\darkblood.omp.json&quot;">Copy cmd</button>
+  </td>
+</tr>
+<tr>
+  <td>Cache OMP init</td>
+  <td class="path-cell">%LOCALAPPDATA%\Vorterm\omp-init-*.ps1</td>
+  <td class="actions">
+    <button class="btn-mini copy-path" data-pwsh="explorer &quot;$env:LOCALAPPDATA\Vorterm&quot;">Copy cmd</button>
+  </td>
+</tr>
+<tr>
+  <td>Var entorno (fallback)</td>
+  <td class="path-cell">$env:POSH_THEMES_PATH</td>
+  <td class="actions">
+    <button class="btn-mini copy-path" data-pwsh="[Environment]::GetEnvironmentVariable('POSH_THEMES_PATH','User')">Copy cmd</button>
+  </td>
+</tr>
+</table>
+
+<div class="callout warn"><span class="label">cache</span>El profile cachea la inicializacion OMP en <code>omp-init-&lt;hash&gt;.ps1</code>. El hash depende del path del tema, asi cambiar de tema en el profile genera un cache nuevo automaticamente. Si edits el tema activo, su mtime invalida el cache propio.</div>
+
+<!-- ========================================================== -->
+<h2 id="vorterm-change"><span class="num">04</span>Cambiar tema</h2>
+
+<ol class="steps">
+<li><b>Descarga</b> el <code>.omp.json</code> nuevo a <code>%USERPROFILE%\.poshthemes\</code>:
+<pre><span class="lang">powershell</span><code><span class="var">$theme</span> = <span class="str">'kushal'</span>  <span class="cmt"># nombre sin .omp.json</span>
+<span class="fn">Invoke-WebRequest</span> -Uri <span class="str">"https://raw.githubusercontent.com/JanDeDobbeleer/oh-my-posh/main/themes/<span class="var">$theme</span>.omp.json"</span> `
+                  -OutFile <span class="str">"<span class="var">$env:USERPROFILE</span>\.poshthemes\<span class="var">$theme</span>.omp.json"</span></code></pre>
+</li>
+<li><b>Edita el profile</b>: <code>notepad $PROFILE</code>. Cambia <code>darkblood.omp.json</code> por el nombre del tema nuevo (2 sitios).</li>
+<li><b>Reabre</b> todas las ventanas de Windows Terminal.</li>
+</ol>
+
+<div class="callout"><span class="label">tip</span>El profile nuevo cachea por hash del path → cambiar tema regenera cache automatico. Si tienes profile viejo, borra <code>$env:LOCALAPPDATA\Vorterm\omp-init.ps1</code> manualmente.</div>
+
+<!-- ========================================================== -->
+<h2 id="vorterm-themes"><span class="num">05</span>Catalogo de temas</h2>
+
+<p>Cada <code>.omp.json</code> va en <code>~\.poshthemes</code>. ~140 temas oficiales.</p>
+
+<div class="theme-grid">
+
+<div class="theme-card">
+  <h4>Catalogo completo</h4>
+  <p>Todos los temas oficiales de oh-my-posh.</p>
+  <div class="links">
+    <a class="btn-mini" href="https://github.com/JanDeDobbeleer/oh-my-posh/tree/main/themes" target="_blank">GitHub</a>
+    <a class="btn-mini" href="https://ohmyposh.dev/docs/themes" target="_blank">Preview web</a>
+  </div>
+</div>
+
+<div class="theme-card">
+  <h4>darkblood (actual)</h4>
+  <p>Default Vorterm. Minimal, branch git, exit code.</p>
+  <div class="links">
+    <a class="btn-mini" href="https://github.com/JanDeDobbeleer/oh-my-posh/blob/main/themes/darkblood.omp.json" target="_blank">JSON</a>
+  </div>
+</div>
+
+<div class="theme-card">
+  <h4>Recomendados</h4>
+  <p>Probados en Windows Terminal + JetBrainsMono Nerd Font.</p>
+  <div class="links">
+    <a class="btn-mini" href="https://github.com/JanDeDobbeleer/oh-my-posh/blob/main/themes/jandedobbeleer.omp.json" target="_blank">jandedobbeleer</a>
+    <a class="btn-mini" href="https://github.com/JanDeDobbeleer/oh-my-posh/blob/main/themes/atomic.omp.json" target="_blank">atomic</a>
+    <a class="btn-mini" href="https://github.com/JanDeDobbeleer/oh-my-posh/blob/main/themes/kushal.omp.json" target="_blank">kushal</a>
+    <a class="btn-mini" href="https://github.com/JanDeDobbeleer/oh-my-posh/blob/main/themes/paradox.omp.json" target="_blank">paradox</a>
+  </div>
+</div>
+
+</div>
+
+<!-- ========================================================== -->
+<h2 id="fix"><span class="num">06</span>Problemas comunes</h2>
+
+<div class="fix-card">
+  <h4>WT muestra warning de fuente / iconos como cuadritos</h4>
+  <div class="sym">"No se puede encontrar la fuente X. Se selecciono Y en su lugar."</div>
+  <p>El nombre de la fuente en <code>settings.json</code> no es el que DirectWrite resuelve. Fix:</p>
+<pre><span class="lang">powershell</span><code><span class="var">$wt</span> = <span class="str">"<span class="var">$env:LOCALAPPDATA</span>\Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json"</span>
+<span class="fn">Copy-Item</span> <span class="var">$wt</span> <span class="str">"<span class="var">$wt</span>.bak"</span>
+<span class="var">$j</span> = <span class="fn">Get-Content</span> <span class="var">$wt</span> -Raw | <span class="fn">ConvertFrom-Json</span> -Depth 100
+<span class="var">$j</span>.profiles.defaults.font.face = <span class="str">'JetBrainsMono Nerd Font Mono'</span>
+<span class="kw">foreach</span> (<span class="var">$p</span> <span class="kw">in</span> <span class="var">$j</span>.profiles.list) { <span class="kw">if</span> (<span class="var">$p</span>.font) { <span class="var">$p</span>.font.face = <span class="str">'JetBrainsMono Nerd Font Mono'</span> } }
+<span class="var">$j</span> | <span class="fn">ConvertTo-Json</span> -Depth 100 | <span class="fn">Set-Content</span> <span class="var">$wt</span> -Encoding utf8</code></pre>
+  <p>Cierra <b>todas</b> las ventanas WT y reabre.</p>
+</div>
+
+<div class="fix-card">
+  <h4>Cambie el tema en el profile pero no aplica</h4>
+  <div class="sym">Profile dice tema X, pero se ve el viejo.</div>
+  <p>Cache OMP no invalido. Borra y reabre:</p>
+<pre><span class="lang">powershell</span><code><span class="fn">Remove-Item</span> <span class="str">"<span class="var">$env:LOCALAPPDATA</span>\Vorterm\omp-init*.ps1"</span> -Force</code></pre>
+</div>
+
+<div class="fix-card">
+  <h4>Glyphs como ?? o cuadritos</h4>
+  <div class="sym">El prompt no muestra iconos.</div>
+  <p>Falta Nerd Font o WT no usa font Nerd. WT → Configuracion → tu perfil → Apariencia → Fuente: <code>JetBrainsMono Nerd Font Mono</code>.</p>
+</div>
+
+<div class="fix-card">
+  <h4>"Comando no encontrado: oh-my-posh"</h4>
+  <div class="sym">Profile carga pero no hay prompt custom.</div>
+  <p>Reinstalar via Vorterm o manual:</p>
+<pre><span class="lang">powershell</span><code>winget install JanDeDobbeleer.OhMyPosh -s winget</code></pre>
+</div>
+
+<div class="fix-card">
+  <h4>Profile roto, terminal no carga</h4>
+  <div class="sym">Errores rojos al abrir terminal.</div>
+<pre><span class="lang">powershell</span><code><span class="fn">Move-Item</span> <span class="var">$PROFILE</span> <span class="str">"<span class="var">$PROFILE</span>.bak"</span>
+<span class="cmt"># Reabrir terminal — sin profile carga limpio. Re-ejecuta Vorterm para regenerar.</span></code></pre>
+</div>
+
+<!-- ========================================================== -->
+<h2 id="desinstalar"><span class="num">07</span>Desinstalar</h2>
+<p>El <code>setup_terminal.ps1</code> incluye GUI de reset. Tambien puedes:</p>
+<ul>
+<li><b>Volver al profile original</b>: <code>Move-Item $PROFILE "$PROFILE.bak"</code></li>
+<li><b>Restaurar settings.json WT</b>: usar el backup automatico <code>settings.json.bak.*</code> que crea Vorterm.</li>
+<li><b>Quitar oh-my-posh</b>: <code>winget uninstall JanDeDobbeleer.OhMyPosh</code></li>
+<li><b>Quitar Nerd Font</b>: Panel control → Fuentes → buscar JetBrainsMono → eliminar.</li>
+</ul>
+<div class="callout"><span class="label">no toca</span>Vorterm no desinstala PowerShell 7, Git, Windows Terminal ni modulos Az/Graph/EXO.</div>
+
+<!-- ========================================================== -->
+<details class="dev" id="dev">
+<summary>Para devs: internals del setup script y CSV drop-in</summary>
+<div class="dev-body">
+
+<h3>Stack del GUI</h3>
+<p>WPF + PowerShell, sin compilacion. XAML inline, runspaces para async, Synchronized hashtable para IPC, Dispatcher para mutar UI desde workers.</p>
+
 <pre><span class="lang">flow</span><code>.ps1 -STA
   Add-Type WPF
   [xml]$xaml = @'<Window>...</Window>'@
@@ -171,320 +398,29 @@ footer { border-top: 1px solid var(--border); margin-top: 48px; padding-top: 18p
   $btn.Add_Click({ ... })
   $window.ShowDialog()</code></pre>
 
-<div class="callout"><span class="label">key</span>WPF requiere STA. PS5.1 ya lo trae. PS7 necesita <code>-STA</code> explicito.</div>
-
-<!-- ========================================================== -->
-<h2 id="stack"><span class="num">01</span>Stack</h2>
-<table>
-<tr><th>Capa</th><th>Tech</th><th>Rol</th></tr>
-<tr><td>UI</td><td>XAML</td><td>Layout declarativo, controles, estilos</td></tr>
-<tr><td>Logic</td><td>PowerShell 5.1+</td><td>Carga XAML, eventos, runspaces</td></tr>
-<tr><td>Render</td><td>WPF</td><td>Visual tree, vector, theming</td></tr>
-<tr><td>Threading</td><td>Runspace + Dispatcher</td><td>Trabajo async sin congelar UI</td></tr>
-<tr><td>IPC</td><td>Synchronized hashtable</td><td>Estado compartido thread-safe</td></tr>
-<tr><td>Dialogs</td><td>WinForms</td><td>FolderBrowserDialog</td></tr>
-</table>
-
-<!-- ========================================================== -->
-<h2 id="assemblies"><span class="num">02</span>Assemblies</h2>
-<pre><span class="lang">powershell</span><code><span class="fn">Add-Type</span> -AssemblyName PresentationFramework, PresentationCore, WindowsBase, System.Windows.Forms</code></pre>
-
-<!-- ========================================================== -->
-<h2 id="arch"><span class="num">03</span>Arquitectura</h2>
-<pre><span class="lang">powershell</span><code>[<span class="kw">CmdletBinding</span>()] <span class="kw">param</span>()
-<span class="var">$ErrorActionPreference</span> = <span class="str">'Stop'</span>
-
-<span class="fn">Add-Type</span> -AssemblyName PresentationFramework, PresentationCore, WindowsBase, System.Windows.Forms
-
-[<span class="kw">xml</span>]<span class="var">$xaml</span> = @<span class="str">'</span>
-<span class="str">&lt;Window xmlns="..." Title="App"&gt;...&lt;/Window&gt;</span>
-<span class="str">'</span>@
-
-<span class="var">$window</span> = [<span class="kw">Windows.Markup.XamlReader</span>]::Load((<span class="fn">New-Object</span> System.Xml.XmlNodeReader <span class="var">$xaml</span>))
-
-<span class="var">$ctrl</span> = @{}
-<span class="kw">foreach</span> (<span class="var">$n</span> <span class="kw">in</span> <span class="str">'BtnRun'</span>,<span class="str">'LogBox'</span>,<span class="str">'ConsoleIn'</span>) { <span class="var">$ctrl</span>[<span class="var">$n</span>] = <span class="var">$window</span>.FindName(<span class="var">$n</span>) }
-
-<span class="var">$sync</span> = [<span class="kw">hashtable</span>]::Synchronized(@{ Window=<span class="var">$window</span>; LogBox=<span class="var">$ctrl</span>.LogBox })
-
-<span class="var">$ctrl</span>.BtnRun.Add_Click({ <span class="cmt"># ... </span> })
-
-[<span class="kw">void</span>]<span class="var">$window</span>.ShowDialog()</code></pre>
-
-<!-- ========================================================== -->
-<h2 id="xaml"><span class="num">04</span>XAML inline</h2>
-<pre><span class="lang">xaml</span><code><span class="tag">&lt;Window</span> <span class="attr">xmlns</span>=<span class="str">"http://schemas.microsoft.com/winfx/2006/xaml/presentation"</span>
-        <span class="attr">xmlns:x</span>=<span class="str">"http://schemas.microsoft.com/winfx/2006/xaml"</span>
-        <span class="attr">Title</span>=<span class="str">"App"</span> <span class="attr">Height</span>=<span class="str">"720"</span> <span class="attr">Width</span>=<span class="str">"1080"</span>
-        <span class="attr">Background</span>=<span class="str">"#0F1419"</span> <span class="attr">Foreground</span>=<span class="str">"#E5E9F0"</span>
-        <span class="attr">FontFamily</span>=<span class="str">"Segoe UI"</span> <span class="attr">FontSize</span>=<span class="str">"14"</span><span class="tag">&gt;</span>
-  <span class="tag">&lt;Window.Resources&gt;</span><span class="cmt">&lt;!-- estilos --&gt;</span><span class="tag">&lt;/Window.Resources&gt;</span>
-  <span class="tag">&lt;Grid&gt;</span><span class="cmt">&lt;!-- contenido --&gt;</span><span class="tag">&lt;/Grid&gt;</span>
-<span class="tag">&lt;/Window&gt;</span></code></pre>
-
-<ul>
-<li>Here-string literal <code>@'...'@</code> evita interpolacion.</li>
-<li><code>x:Name</code> = id para <code>FindName</code>.</li>
-<li>Solo ASCII en el .ps1 si no hay BOM UTF-8.</li>
-</ul>
-
-<!-- ========================================================== -->
-<h2 id="layout"><span class="num">05</span>Layout</h2>
-<table>
-<tr><th>Container</th><th>Uso</th></tr>
-<tr><td><code>Grid</code></td><td>Root. Filas/cols con <code>*</code> / <code>Auto</code> / fijo.</td></tr>
-<tr><td><code>StackPanel</code></td><td>Apilar vertical/horizontal.</td></tr>
-<tr><td><code>WrapPanel</code></td><td>Flujo automatico (checkbox groups).</td></tr>
-<tr><td><code>Border</code></td><td>Caja con borde + padding + bg.</td></tr>
-<tr><td><code>ScrollViewer</code></td><td>Wrap contenido scroleable.</td></tr>
-</table>
-
-<pre><span class="lang">xaml</span><code><span class="tag">&lt;Grid.RowDefinitions&gt;</span>
-  <span class="tag">&lt;RowDefinition</span> <span class="attr">Height</span>=<span class="str">"Auto"</span><span class="tag">/&gt;</span>  <span class="cmt">&lt;!-- header --&gt;</span>
-  <span class="tag">&lt;RowDefinition</span> <span class="attr">Height</span>=<span class="str">"*"</span><span class="tag">/&gt;</span>     <span class="cmt">&lt;!-- log --&gt;</span>
-  <span class="tag">&lt;RowDefinition</span> <span class="attr">Height</span>=<span class="str">"180"</span><span class="tag">/&gt;</span>   <span class="cmt">&lt;!-- consola --&gt;</span>
-  <span class="tag">&lt;RowDefinition</span> <span class="attr">Height</span>=<span class="str">"Auto"</span><span class="tag">/&gt;</span>  <span class="cmt">&lt;!-- botones --&gt;</span>
-<span class="tag">&lt;/Grid.RowDefinitions&gt;</span></code></pre>
-
-<!-- ========================================================== -->
-<h2 id="buttons"><span class="num">06</span>Botones</h2>
-<pre><span class="lang">xaml</span><code><span class="tag">&lt;StackPanel</span> <span class="attr">Orientation</span>=<span class="str">"Horizontal"</span> <span class="attr">HorizontalAlignment</span>=<span class="str">"Right"</span><span class="tag">&gt;</span>
-  <span class="tag">&lt;Button</span> <span class="attr">x:Name</span>=<span class="str">"BtnExit"</span>  <span class="attr">Content</span>=<span class="str">"Exit"</span>  <span class="attr">Style</span>=<span class="str">"{StaticResource GhostButton}"</span>   <span class="attr">Margin</span>=<span class="str">"0,0,8,0"</span><span class="tag">/&gt;</span>
-  <span class="tag">&lt;Button</span> <span class="attr">x:Name</span>=<span class="str">"BtnReset"</span> <span class="attr">Content</span>=<span class="str">"Reset"</span> <span class="attr">Style</span>=<span class="str">"{StaticResource WarningButton}"</span> <span class="attr">Margin</span>=<span class="str">"0,0,8,0"</span><span class="tag">/&gt;</span>
-  <span class="tag">&lt;Button</span> <span class="attr">x:Name</span>=<span class="str">"BtnRun"</span>   <span class="attr">Content</span>=<span class="str">"Run"</span>   <span class="attr">Style</span>=<span class="str">"{StaticResource PrimaryButton}"</span><span class="tag">/&gt;</span>
-<span class="tag">&lt;/StackPanel&gt;</span></code></pre>
-
-<pre><span class="lang">powershell</span><code><span class="var">$ctrl</span>.BtnRun.Add_Click({
-    <span class="var">$this</span>.IsEnabled = <span class="var">$false</span>
-    <span class="fn">Start-AsyncJob</span> -Work { ... }
-})
-
-<span class="var">$ctrl</span>.BtnReset.Add_Click({
-    <span class="var">$r</span> = [<span class="kw">System.Windows.MessageBox</span>]::Show(<span class="str">'Reset?'</span>,<span class="str">'Confirm'</span>,<span class="str">'YesNo'</span>,<span class="str">'Warning'</span>)
-    <span class="kw">if</span> (<span class="var">$r</span> -eq <span class="str">'Yes'</span>) { <span class="cmt"># ... </span> }
-})</code></pre>
-
-<p><b>Reglas</b>: 1 Primary, 0-1 Warning, resto Ghost. Confirmacion para destructivos. Disable durante work.</p>
-
-<!-- ========================================================== -->
-<h2 id="styling"><span class="num">07</span>Theming</h2>
-<pre><span class="lang">xaml</span><code><span class="tag">&lt;SolidColorBrush</span> <span class="attr">x:Key</span>=<span class="str">"Accent"</span>  <span class="attr">Color</span>=<span class="str">"#4FC3F7"</span><span class="tag">/&gt;</span>
-<span class="tag">&lt;SolidColorBrush</span> <span class="attr">x:Key</span>=<span class="str">"Border1"</span> <span class="attr">Color</span>=<span class="str">"#2D3743"</span><span class="tag">/&gt;</span>
-<span class="tag">&lt;SolidColorBrush</span> <span class="attr">x:Key</span>=<span class="str">"Warn"</span>    <span class="attr">Color</span>=<span class="str">"#F0883E"</span><span class="tag">/&gt;</span>
-
-<span class="tag">&lt;Style</span> <span class="attr">x:Key</span>=<span class="str">"GhostButton"</span> <span class="attr">TargetType</span>=<span class="str">"Button"</span><span class="tag">&gt;</span>
-  <span class="tag">&lt;Setter</span> <span class="attr">Property</span>=<span class="str">"Background"</span>  <span class="attr">Value</span>=<span class="str">"Transparent"</span><span class="tag">/&gt;</span>
-  <span class="tag">&lt;Setter</span> <span class="attr">Property</span>=<span class="str">"Foreground"</span>  <span class="attr">Value</span>=<span class="str">"{StaticResource Accent}"</span><span class="tag">/&gt;</span>
-  <span class="tag">&lt;Setter</span> <span class="attr">Property</span>=<span class="str">"BorderBrush"</span> <span class="attr">Value</span>=<span class="str">"{StaticResource Border1}"</span><span class="tag">/&gt;</span>
-  <span class="tag">&lt;Setter</span> <span class="attr">Property</span>=<span class="str">"BorderThickness"</span> <span class="attr">Value</span>=<span class="str">"1"</span><span class="tag">/&gt;</span>
-  <span class="tag">&lt;Setter</span> <span class="attr">Property</span>=<span class="str">"Padding"</span> <span class="attr">Value</span>=<span class="str">"16,8"</span><span class="tag">/&gt;</span>
-  <span class="tag">&lt;Setter</span> <span class="attr">Property</span>=<span class="str">"Cursor"</span>  <span class="attr">Value</span>=<span class="str">"Hand"</span><span class="tag">/&gt;</span>
-  <span class="tag">&lt;Setter</span> <span class="attr">Property</span>=<span class="str">"Template"</span><span class="tag">&gt;</span>
-    <span class="tag">&lt;Setter.Value&gt;</span>
-      <span class="tag">&lt;ControlTemplate</span> <span class="attr">TargetType</span>=<span class="str">"Button"</span><span class="tag">&gt;</span>
-        <span class="tag">&lt;Border</span> <span class="attr">x:Name</span>=<span class="str">"bd"</span> <span class="attr">Background</span>=<span class="str">"{TemplateBinding Background}"</span>
-                <span class="attr">BorderBrush</span>=<span class="str">"{TemplateBinding BorderBrush}"</span>
-                <span class="attr">BorderThickness</span>=<span class="str">"{TemplateBinding BorderThickness}"</span><span class="tag">&gt;</span>
-          <span class="tag">&lt;ContentPresenter</span> <span class="attr">HorizontalAlignment</span>=<span class="str">"Center"</span> <span class="attr">VerticalAlignment</span>=<span class="str">"Center"</span> <span class="attr">Margin</span>=<span class="str">"{TemplateBinding Padding}"</span><span class="tag">/&gt;</span>
-        <span class="tag">&lt;/Border&gt;</span>
-        <span class="tag">&lt;ControlTemplate.Triggers&gt;</span>
-          <span class="tag">&lt;Trigger</span> <span class="attr">Property</span>=<span class="str">"IsMouseOver"</span> <span class="attr">Value</span>=<span class="str">"True"</span><span class="tag">&gt;</span>
-            <span class="tag">&lt;Setter</span> <span class="attr">TargetName</span>=<span class="str">"bd"</span> <span class="attr">Property</span>=<span class="str">"Background"</span> <span class="attr">Value</span>=<span class="str">"#1A2733"</span><span class="tag">/&gt;</span>
-          <span class="tag">&lt;/Trigger&gt;</span>
-          <span class="tag">&lt;Trigger</span> <span class="attr">Property</span>=<span class="str">"IsEnabled"</span> <span class="attr">Value</span>=<span class="str">"False"</span><span class="tag">&gt;</span>
-            <span class="tag">&lt;Setter</span> <span class="attr">TargetName</span>=<span class="str">"bd"</span> <span class="attr">Property</span>=<span class="str">"Opacity"</span> <span class="attr">Value</span>=<span class="str">"0.4"</span><span class="tag">/&gt;</span>
-          <span class="tag">&lt;/Trigger&gt;</span>
-        <span class="tag">&lt;/ControlTemplate.Triggers&gt;</span>
-      <span class="tag">&lt;/ControlTemplate&gt;</span>
-    <span class="tag">&lt;/Setter.Value&gt;</span>
-  <span class="tag">&lt;/Setter&gt;</span>
-<span class="tag">&lt;/Style&gt;</span>
-
-<span class="tag">&lt;Style</span> <span class="attr">x:Key</span>=<span class="str">"PrimaryButton"</span> <span class="attr">TargetType</span>=<span class="str">"Button"</span> <span class="attr">BasedOn</span>=<span class="str">"{StaticResource GhostButton}"</span><span class="tag">&gt;</span>
-  <span class="tag">&lt;Setter</span> <span class="attr">Property</span>=<span class="str">"Background"</span> <span class="attr">Value</span>=<span class="str">"{StaticResource Accent}"</span><span class="tag">/&gt;</span>
-  <span class="tag">&lt;Setter</span> <span class="attr">Property</span>=<span class="str">"Foreground"</span> <span class="attr">Value</span>=<span class="str">"#0B0E13"</span><span class="tag">/&gt;</span>
-  <span class="tag">&lt;Setter</span> <span class="attr">Property</span>=<span class="str">"FontWeight"</span> <span class="attr">Value</span>=<span class="str">"Bold"</span><span class="tag">/&gt;</span>
-<span class="tag">&lt;/Style&gt;</span></code></pre>
-
-<!-- ========================================================== -->
-<h2 id="runspaces"><span class="num">08</span>Runspaces async</h2>
-<pre><span class="lang">powershell</span><code><span class="kw">function</span> <span class="fn">Start-AsyncJob</span> {
-    <span class="kw">param</span>([<span class="kw">scriptblock</span>]<span class="var">$Work</span>, [<span class="kw">hashtable</span>]<span class="var">$Args</span> = @{})
-    <span class="var">$rs</span> = [<span class="kw">runspacefactory</span>]::CreateRunspace()
-    <span class="var">$rs</span>.ApartmentState = <span class="str">'STA'</span>
-    <span class="var">$rs</span>.Open()
-    <span class="var">$rs</span>.SessionStateProxy.SetVariable(<span class="str">'sync'</span>, <span class="var">$sync</span>)
-    <span class="kw">foreach</span> (<span class="var">$k</span> <span class="kw">in</span> <span class="var">$Args</span>.Keys) { <span class="var">$rs</span>.SessionStateProxy.SetVariable(<span class="var">$k</span>, <span class="var">$Args</span>[<span class="var">$k</span>]) }
-    <span class="var">$ps</span> = [<span class="kw">powershell</span>]::Create()
-    <span class="var">$ps</span>.Runspace = <span class="var">$rs</span>
-    [<span class="kw">void</span>]<span class="var">$ps</span>.AddScript(<span class="var">$Work</span>)
-    [<span class="kw">void</span>]<span class="var">$ps</span>.BeginInvoke()
-}</code></pre>
-
-<!-- ========================================================== -->
-<h2 id="dispatcher"><span class="num">09</span>Dispatcher</h2>
-<p>Toda mutacion de control desde un worker debe ir por el Dispatcher:</p>
-<pre><span class="lang">powershell</span><code><span class="var">$sync</span>.Window.Dispatcher.Invoke([<span class="kw">action</span>]{
-    <span class="var">$sync</span>.LogBox.AppendText(<span class="str">"line`r`n"</span>)
-    <span class="var">$sync</span>.LogBox.ScrollToEnd()
-})</code></pre>
-<div class="callout danger"><span class="label">err</span><i>The calling thread cannot access this object</i> = falta Dispatcher.</div>
-
-<!-- ========================================================== -->
-<h2 id="console"><span class="num">10</span>Mini consola</h2>
-<p>Output readonly + input + clear. Enter ejecuta. Up/Down history.</p>
-<pre><span class="lang">xaml</span><code><span class="tag">&lt;Border</span> <span class="attr">Grid.Row</span>=<span class="str">"2"</span> <span class="attr">BorderBrush</span>=<span class="str">"{StaticResource Border1}"</span> <span class="attr">BorderThickness</span>=<span class="str">"1"</span>
-        <span class="attr">Background</span>=<span class="str">"#0B0E13"</span><span class="tag">&gt;</span>
-  <span class="tag">&lt;Grid&gt;</span>
-    <span class="tag">&lt;Grid.RowDefinitions&gt;</span>
-      <span class="tag">&lt;RowDefinition</span> <span class="attr">Height</span>=<span class="str">"Auto"</span><span class="tag">/&gt;</span>
-      <span class="tag">&lt;RowDefinition</span> <span class="attr">Height</span>=<span class="str">"*"</span><span class="tag">/&gt;</span>
-      <span class="tag">&lt;RowDefinition</span> <span class="attr">Height</span>=<span class="str">"Auto"</span><span class="tag">/&gt;</span>
-    <span class="tag">&lt;/Grid.RowDefinitions&gt;</span>
-    <span class="tag">&lt;TextBlock</span> <span class="attr">Grid.Row</span>=<span class="str">"0"</span> <span class="attr">Text</span>=<span class="str">"// console"</span> <span class="attr">Foreground</span>=<span class="str">"{StaticResource Accent}"</span>
-               <span class="attr">FontWeight</span>=<span class="str">"Bold"</span> <span class="attr">Margin</span>=<span class="str">"12,8,0,4"</span><span class="tag">/&gt;</span>
-    <span class="tag">&lt;TextBox</span> <span class="attr">x:Name</span>=<span class="str">"ConsoleOut"</span> <span class="attr">Grid.Row</span>=<span class="str">"1"</span> <span class="attr">IsReadOnly</span>=<span class="str">"True"</span>
-             <span class="attr">Background</span>=<span class="str">"Transparent"</span> <span class="attr">BorderThickness</span>=<span class="str">"0"</span>
-             <span class="attr">FontFamily</span>=<span class="str">"Cascadia Mono, Consolas"</span> <span class="attr">FontSize</span>=<span class="str">"13"</span>
-             <span class="attr">VerticalScrollBarVisibility</span>=<span class="str">"Auto"</span> <span class="attr">AcceptsReturn</span>=<span class="str">"True"</span><span class="tag">/&gt;</span>
-    <span class="tag">&lt;Grid</span> <span class="attr">Grid.Row</span>=<span class="str">"2"</span> <span class="attr">Margin</span>=<span class="str">"8,4,8,8"</span><span class="tag">&gt;</span>
-      <span class="tag">&lt;Grid.ColumnDefinitions&gt;</span>
-        <span class="tag">&lt;ColumnDefinition</span> <span class="attr">Width</span>=<span class="str">"Auto"</span><span class="tag">/&gt;</span>
-        <span class="tag">&lt;ColumnDefinition</span> <span class="attr">Width</span>=<span class="str">"*"</span><span class="tag">/&gt;</span>
-        <span class="tag">&lt;ColumnDefinition</span> <span class="attr">Width</span>=<span class="str">"Auto"</span><span class="tag">/&gt;</span>
-      <span class="tag">&lt;/Grid.ColumnDefinitions&gt;</span>
-      <span class="tag">&lt;TextBlock</span> <span class="attr">Text</span>=<span class="str">"PS&gt;"</span> <span class="attr">Foreground</span>=<span class="str">"{StaticResource Accent}"</span>
-                 <span class="attr">FontFamily</span>=<span class="str">"Cascadia Mono"</span> <span class="attr">FontWeight</span>=<span class="str">"Bold"</span>
-                 <span class="attr">VerticalAlignment</span>=<span class="str">"Center"</span> <span class="attr">Margin</span>=<span class="str">"0,0,8,0"</span><span class="tag">/&gt;</span>
-      <span class="tag">&lt;TextBox</span> <span class="attr">x:Name</span>=<span class="str">"ConsoleIn"</span> <span class="attr">Grid.Column</span>=<span class="str">"1"</span> <span class="attr">FontFamily</span>=<span class="str">"Cascadia Mono"</span><span class="tag">/&gt;</span>
-      <span class="tag">&lt;Button</span> <span class="attr">x:Name</span>=<span class="str">"ConsoleClear"</span> <span class="attr">Grid.Column</span>=<span class="str">"2"</span> <span class="attr">Content</span>=<span class="str">"Clear"</span>
-              <span class="attr">Margin</span>=<span class="str">"6,0,0,0"</span> <span class="attr">Style</span>=<span class="str">"{StaticResource GhostButton}"</span><span class="tag">/&gt;</span>
-    <span class="tag">&lt;/Grid&gt;</span>
-  <span class="tag">&lt;/Grid&gt;</span>
-<span class="tag">&lt;/Border&gt;</span></code></pre>
-
-<!-- ========================================================== -->
-<h2 id="exec"><span class="num">11</span>Ejecutor + key handler</h2>
-<pre><span class="lang">powershell</span><code><span class="var">$script</span>:CmdHistory   = <span class="fn">New-Object</span> System.Collections.Generic.List[string]
-<span class="var">$script</span>:CmdHistoryIdx = 0
-
-<span class="kw">function</span> <span class="fn">Invoke-ConsoleCommand</span> {
-    <span class="kw">param</span>([<span class="kw">string</span>]<span class="var">$Cmd</span>)
-    <span class="var">$rs</span> = [<span class="kw">runspacefactory</span>]::CreateRunspace()
-    <span class="var">$rs</span>.ApartmentState = <span class="str">'STA'</span>; <span class="var">$rs</span>.Open()
-    <span class="var">$rs</span>.SessionStateProxy.SetVariable(<span class="str">'sync'</span>, <span class="var">$sync</span>)
-    <span class="var">$rs</span>.SessionStateProxy.SetVariable(<span class="str">'cmd'</span>,  <span class="var">$Cmd</span>)
-    <span class="var">$ps</span> = [<span class="kw">powershell</span>]::Create()
-    <span class="var">$ps</span>.Runspace = <span class="var">$rs</span>
-    [<span class="kw">void</span>]<span class="var">$ps</span>.AddScript({
-        <span class="kw">try</span> {
-            <span class="var">$r</span> = <span class="fn">Invoke-Expression</span> <span class="var">$cmd</span> 2&gt;&amp;1
-            <span class="kw">if</span> (<span class="var">$null</span> -ne <span class="var">$r</span>) {
-                <span class="var">$t</span> = (<span class="var">$r</span> | <span class="fn">Out-String</span>).TrimEnd() + <span class="str">"`r`n"</span>
-                <span class="var">$sync</span>.Window.Dispatcher.Invoke([<span class="kw">action</span>]{
-                    <span class="var">$sync</span>.ConsoleOut.AppendText(<span class="var">$t</span>); <span class="var">$sync</span>.ConsoleOut.ScrollToEnd()
-                })
-            }
-        } <span class="kw">catch</span> {
-            <span class="var">$sync</span>.Window.Dispatcher.Invoke([<span class="kw">action</span>]{
-                <span class="var">$sync</span>.ConsoleOut.AppendText(<span class="str">"ERR: "</span> + <span class="var">$_</span>.Exception.Message + <span class="str">"`r`n"</span>)
-            })
-        }
-    })
-    [<span class="kw">void</span>]<span class="var">$ps</span>.BeginInvoke()
-}
-
-<span class="var">$ctrl</span>.ConsoleIn.Add_KeyDown({
-    <span class="kw">param</span>(<span class="var">$s</span>, <span class="var">$e</span>)
-    <span class="kw">switch</span> (<span class="var">$e</span>.Key) {
-        <span class="str">'Return'</span> {
-            <span class="var">$cmd</span> = <span class="var">$s</span>.Text.Trim()
-            <span class="kw">if</span> (-not <span class="var">$cmd</span>) { <span class="kw">return</span> }
-            <span class="var">$script</span>:CmdHistory.Add(<span class="var">$cmd</span>) | <span class="fn">Out-Null</span>
-            <span class="var">$script</span>:CmdHistoryIdx = <span class="var">$script</span>:CmdHistory.Count
-            <span class="var">$ctrl</span>.ConsoleOut.AppendText(<span class="str">"PS&gt; </span><span class="var">$cmd</span><span class="str">`r`n"</span>)
-            <span class="var">$ctrl</span>.ConsoleOut.ScrollToEnd()
-            <span class="var">$s</span>.Clear()
-            <span class="fn">Invoke-ConsoleCommand</span> <span class="var">$cmd</span>
-            <span class="var">$e</span>.Handled = <span class="var">$true</span>
-        }
-        <span class="str">'Up'</span> {
-            <span class="kw">if</span> (<span class="var">$script</span>:CmdHistoryIdx -gt 0) {
-                <span class="var">$script</span>:CmdHistoryIdx--
-                <span class="var">$s</span>.Text = <span class="var">$script</span>:CmdHistory[<span class="var">$script</span>:CmdHistoryIdx]
-                <span class="var">$s</span>.CaretIndex = <span class="var">$s</span>.Text.Length
-                <span class="var">$e</span>.Handled = <span class="var">$true</span>
-            }
-        }
-        <span class="str">'Down'</span> {
-            <span class="kw">if</span> (<span class="var">$script</span>:CmdHistoryIdx -lt (<span class="var">$script</span>:CmdHistory.Count - 1)) {
-                <span class="var">$script</span>:CmdHistoryIdx++
-                <span class="var">$s</span>.Text = <span class="var">$script</span>:CmdHistory[<span class="var">$script</span>:CmdHistoryIdx]
-                <span class="var">$s</span>.CaretIndex = <span class="var">$s</span>.Text.Length
-                <span class="var">$e</span>.Handled = <span class="var">$true</span>
-            } <span class="kw">else</span> { <span class="var">$s</span>.Clear() }
-        }
-    }
-})
-
-<span class="var">$ctrl</span>.ConsoleClear.Add_Click({ <span class="var">$ctrl</span>.ConsoleOut.Clear() })
-<span class="var">$window</span>.Add_Loaded({ <span class="var">$ctrl</span>.ConsoleIn.Focus() })</code></pre>
-
-<div class="callout warn"><span class="label">seguridad</span><code>Invoke-Expression</code> ejecuta cualquier cosa. OK para input local del propio user. NUNCA usar con input remoto sin sanitizar.</div>
-
-<!-- ========================================================== -->
-<h2 id="launcher"><span class="num">12</span>Launcher .bat</h2>
-<pre><span class="lang">cmd</span><code>@echo off
-start "" powershell.exe -NoLogo -NoProfile -STA -WindowStyle Hidden ^
-    -ExecutionPolicy Bypass -File "%~dp0app.ps1"</code></pre>
-
-<table>
-<tr><th>Flag</th><th>Razon</th></tr>
-<tr><td><code>start ""</code></td><td>Desacopla. Bat termina, GUI vive.</td></tr>
-<tr><td><code>-STA</code></td><td>WPF requiere STA.</td></tr>
-<tr><td><code>-NoProfile</code></td><td>Arranque limpio.</td></tr>
-<tr><td><code>-WindowStyle Hidden</code></td><td>Oculta consola padre.</td></tr>
-</table>
-
-<!-- ========================================================== -->
-<h2 id="pitfalls"><span class="num">13</span>Pitfalls</h2>
+<h3>Pitfalls comunes</h3>
 <table>
 <tr><th>Sintoma</th><th>Causa</th><th>Fix</th></tr>
 <tr><td><code>thread must be STA</code></td><td>WPF en MTA</td><td>Lanzar con <code>-STA</code></td></tr>
 <tr><td><code>Cannot access this object</code></td><td>Mutar UI sin Dispatcher</td><td>Wrap en <code>Dispatcher.Invoke</code></td></tr>
 <tr><td>UI congelada</td><td>Trabajo en UI thread</td><td>Mover a runspace</td></tr>
 <tr><td>Caracteres raros</td><td>.ps1 sin BOM</td><td>UTF-8 BOM o ASCII</td></tr>
-<tr><td><code>$Args</code> param crash</td><td>Nombre reservado</td><td>Usar <code>$Rest</code></td></tr>
 <tr><td>JSONC parse falla</td><td>PS5.1 no soporta <code>//</code></td><td>Strip comments antes</td></tr>
-<tr><td>Boton sin respuesta</td><td>Excepcion silenciada</td><td>Try/catch en handler</td></tr>
 </table>
 
-<!-- ========================================================== -->
-<h2 id="csv"><span class="num">14</span>CSV drop-in (integracion)</h2>
+<h3>Detalles cache OMP</h3>
+<p>El profile cachea init en <code>%LOCALAPPDATA%\Vorterm\omp-init-&lt;hash&gt;.ps1</code>. Hash MD5(8) del path del tema → cada tema tiene cache propio. Invalidacion via mtime del tema vs cache.</p>
 
-<p>Cada fila = pieza autonoma para inyectar en un script <code>.ps1</code> existente.
-Columnas:</p>
-
-<table>
-<tr><th>Col</th><th>Significado</th></tr>
-<tr><td><code>id</code></td><td>Identificador unico</td></tr>
-<tr><td><code>kind</code></td><td><code>xaml</code> | <code>powershell</code> | <code>cmd</code></td></tr>
-<tr><td><code>insert_at</code></td><td>Donde insertarlo en el script existente (ancla)</td></tr>
-<tr><td><code>requires</code></td><td>IDs prerequisitos (separados por <code>;</code>)</td></tr>
-<tr><td><code>snippet</code></td><td>Codigo listo (saltos como <code>\n</code>, <code>"</code> escapado como <code>""</code>)</td></tr>
-</table>
-
-<p>Anclas reconocidas:</p>
+<h3>Detalles fuente Nerd Font</h3>
+<p>JetBrainsMono Nerd Font v3 expone 2 nombres en tabla <code>name</code> del TTF:</p>
 <ul>
-<li><code>xaml.window-resources</code>: dentro de <code>&lt;Window.Resources&gt;</code></li>
-<li><code>xaml.grid-row</code>: una fila adicional al Grid root + entrada en <code>RowDefinitions</code></li>
-<li><code>xaml.action-bar</code>: dentro del StackPanel de botones de accion</li>
-<li><code>ps.before-show</code>: antes de <code>$window.ShowDialog()</code></li>
-<li><code>ps.controls-bind</code>: dentro del bucle <code>foreach ... FindName</code></li>
-<li><code>ps.sync-fields</code>: dentro de <code>[hashtable]::Synchronized(@{ ... })</code></li>
-<li><code>ps.helpers</code>: junto al resto de funciones helper</li>
-<li><code>ps.event-wire</code>: tras carga de XAML, antes de ShowDialog</li>
+<li><b>name ID 1 (GDI family)</b>: <code>JetBrainsMono NFM</code> (lo que enumera <code>InstalledFontCollection</code>)</li>
+<li><b>name ID 16 (typographic / DWrite)</b>: <code>JetBrainsMono Nerd Font Mono</code> (lo que WT espera)</li>
 </ul>
+<p>Si <code>settings.json</code> tiene el GDI family, WT muestra warning. <code>setup_terminal.ps1</code> mapea GDI → typographic antes de escribir.</p>
+
+<h3>CSV drop-in (componentes reutilizables)</h3>
+<p>Cada fila = snippet inyectable en otro script <code>.ps1</code>. Columnas: <code>id, kind, insert_at, requires, snippet</code>. Anclas: <code>xaml.window-resources</code>, <code>xaml.grid-row</code>, <code>xaml.action-bar</code>, <code>ps.before-show</code>, <code>ps.controls-bind</code>, <code>ps.sync-fields</code>, <code>ps.helpers</code>, <code>ps.event-wire</code>.</p>
 
 <div class="csv-wrap">
 <button class="copy-btn" id="copyCsv" type="button">Copy CSV</button>
@@ -510,4 +446,74 @@ C18,powershell,ps.event-wire,C10,"$ctrl.BtnRun.Add_Click({ $ctrl.BtnRun.IsEnable
 C19,powershell,ps.event-wire,,"$ctrl.BtnReset.Add_Click({ $r = [System.Windows.MessageBox]::Show('Reset?','Confirm',[System.Windows.MessageBoxButton]::YesNo,[System.Windows.MessageBoxImage]::Warning); if ($r -eq [System.Windows.MessageBoxResult]::Yes) { Write-Log 'Reset OK' } })"
 C20,powershell,ps.before-show,,"$window.Add_Loaded({ $ctrl.ConsoleIn.Focus() })"
 </code></pre>
+</div>
+
+</div>
+</details>
+
+<footer>
+  Vorterm 7.0 — generado por <code>setup_terminal.ps1</code>. Profile + cache OMP por hash, lazy load posh-git/Terminal-Icons, font detect via DirectWrite typographic family.
+</footer>
+
+</main>
+</div>
+
+<script>
+(function () {
+  function flash(btn, ok) {
+    var orig = btn.textContent;
+    btn.classList.add('copied');
+    btn.textContent = ok ? 'OK' : 'ERR';
+    setTimeout(function () { btn.classList.remove('copied'); btn.textContent = orig; }, 1100);
+  }
+
+  function copyText(text, btn) {
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text).then(function () { flash(btn, true); }, function () { flash(btn, false); });
+      return;
+    }
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    var ok = false;
+    try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+    document.body.removeChild(ta);
+    flash(btn, ok);
+  }
+
+  var csv = document.getElementById('copyCsv');
+  if (csv) {
+    csv.addEventListener('click', function () {
+      var data = document.getElementById('csvData');
+      if (data) copyText(data.innerText, csv);
+    });
+  }
+
+  document.querySelectorAll('.copy-path').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var pwsh = btn.getAttribute('data-pwsh');
+      var raw  = btn.getAttribute('data-path');
+      copyText(pwsh || raw || '', btn);
+    });
+  });
+
+  // Active nav highlight on scroll
+  var sections = document.querySelectorAll('main h2[id]');
+  var navLinks = document.querySelectorAll('aside nav a');
+  function setActive() {
+    var y = window.scrollY + 80;
+    var current = null;
+    sections.forEach(function (s) { if (s.offsetTop <= y) current = s.id; });
+    navLinks.forEach(function (a) {
+      a.classList.toggle('active', a.getAttribute('href') === '#' + current);
+    });
+  }
+  window.addEventListener('scroll', setActive, { passive: true });
+  setActive();
+})();
+</script>
+
+</body>
 </html>

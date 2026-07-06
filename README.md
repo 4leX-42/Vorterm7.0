@@ -5,7 +5,7 @@
 </td>
 <td valign="middle">
 
-### VORTERM 7.0
+### VORTERM 7.1
 
 **From clean Windows to modern dev shell**
 *one click*
@@ -45,7 +45,7 @@ That's it
 
 ## 📦 Stack
 
-> Silent · parallel · winget-powered
+> Silent · sequential &amp; retry-safe · winget-powered
 
 <table align="center">
 <tr>
@@ -65,7 +65,7 @@ Git
 **Shell experience**
 
 <sub>
-oh-my-posh<br/>
+oh-my-posh + <code>Mainthema</code> (bundled, offline)<br/>
 JetBrainsMono Nerd Font<br/>
 PSReadLine · Terminal-Icons · posh-git
 </sub>
