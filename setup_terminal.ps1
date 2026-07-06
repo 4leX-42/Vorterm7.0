@@ -788,7 +788,10 @@ if (Test-Path `$_ompExe) {
             `$_ompTheme = Join-Path `$env:POSH_THEMES_PATH '$themeLeaf'
         }
         `$_themeHash = [BitConverter]::ToString([Security.Cryptography.MD5]::Create().ComputeHash([Text.Encoding]::UTF8.GetBytes(`$_ompTheme))).Replace('-','').Substring(0,8)
-        `$_ompCache  = "`$env:LOCALAPPDATA\Vorterm\omp-init-`$_themeHash.ps1"
+        # v2: los caches v1 llevaban Set-PSReadLineOption -PredictionSource
+        # HistoryAndPlugin del propio oh-my-posh init, que casca en consolas no
+        # interactivas / PSReadLine sin plugin. Nombre nuevo = cache viejo fuera.
+        `$_ompCache  = "`$env:LOCALAPPDATA\Vorterm\omp-init2-`$_themeHash.ps1"
         `$_cacheDir = Split-Path `$_ompCache
         if (-not (Test-Path `$_cacheDir)) { New-Item -ItemType Directory -Path `$_cacheDir -Force | Out-Null }
         `$_themeMtime = if (Test-Path `$_ompTheme) { (Get-Item `$_ompTheme).LastWriteTimeUtc.Ticks } else { 0 }
@@ -802,6 +805,13 @@ if (Test-Path `$_ompExe) {
             } else {
                 & `$_ompExe init pwsh | Out-File -FilePath `$_ompCache -Encoding utf8
             }
+            # Sanear: el init de OMP mete Set-PSReadLineOption (PredictionSource
+            # HistoryAndPlugin...) que lanza EXCEPCION (no la traga -ErrorAction)
+            # en consolas no interactivas o PSReadLine sin plugin. try/catch.
+            # El perfil ya configura PSReadLine con guards por version.
+            `$_c = Get-Content `$_ompCache -Raw
+            `$_c = `$_c -replace '(?m)^(\s*)(Set-PSReadLineOption\b[^\r\n]*?)(\s*-ErrorAction\s+\w+)?\s*`$', '`$1try { `$2 -ErrorAction SilentlyContinue } catch {}'
+            Set-Content -Path `$_ompCache -Value `$_c -Encoding utf8
         }
         if ((Get-Item `$_ompCache).Length -gt 0) {
             . `$_ompCache
