@@ -716,10 +716,52 @@ public static extern System.IntPtr SendMessageTimeout(System.IntPtr hWnd, uint M
         if ($opts.WriteProfile) {
             Set-Status 'Profile' 80
 
-            $ps7Dir  = Join-Path $env:USERPROFILE 'Documents\PowerShell'
-            $ps7Path = Join-Path $ps7Dir 'Microsoft.PowerShell_profile.ps1'
-            $ps5Dir  = Join-Path $env:USERPROFILE 'Documents\WindowsPowerShell'
-            $ps5Path = Join-Path $ps5Dir 'Microsoft.PowerShell_profile.ps1'
+            # Ruta REAL del perfil. Con OneDrive "Known Folder Move" Documents vive
+            # en OneDrive\Documentos: si escribimos en USERPROFILE\Documents, pwsh
+            # carga OTRO perfil (viejo) y el tema nunca se aplica. La verdad la
+            # tiene $PROFILE de cada engine; fallback: carpeta Documents real.
+            $realDocs = try { [Environment]::GetFolderPath('MyDocuments') } catch { $null }
+            if (-not $realDocs) { $realDocs = Join-Path $env:USERPROFILE 'Documents' }
+
+            $ps7Path = $null
+            if ($pwshExe) {
+                try {
+                    $ps7Path = (& $pwshExe -NoProfile -NonInteractive -Command '$PROFILE.CurrentUserCurrentHost' 2>$null |
+                                Select-Object -First 1).Trim()
+                } catch {}
+            }
+            if (-not $ps7Path) { $ps7Path = Join-Path $realDocs 'PowerShell\Microsoft.PowerShell_profile.ps1' }
+            $ps7Dir = Split-Path $ps7Path
+
+            $ps5Path = $null
+            try {
+                $ps5Path = (& "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" `
+                            -NoProfile -NonInteractive -Command '$PROFILE.CurrentUserCurrentHost' 2>$null |
+                            Select-Object -First 1).Trim()
+            } catch {}
+            if (-not $ps5Path) { $ps5Path = Join-Path $realDocs 'WindowsPowerShell\Microsoft.PowerShell_profile.ps1' }
+            $ps5Dir = Split-Path $ps5Path
+            Write-Log "  [..] perfil PS7 real: $ps7Path"
+            Write-Log "  [..] perfil PS5 real: $ps5Path"
+
+            # Perfiles obsoletos en la ubicacion NO activa (p.ej. Documents local
+            # cuando OneDrive manda, o viceversa): neutralizar para que no pisen
+            # el tema ni suelten errores viejos al arrancar.
+            $staleCandidates = @(
+                (Join-Path $env:USERPROFILE 'Documents\PowerShell\Microsoft.PowerShell_profile.ps1'),
+                (Join-Path $env:USERPROFILE 'Documents\WindowsPowerShell\Microsoft.PowerShell_profile.ps1'),
+                (Join-Path $realDocs 'PowerShell\Microsoft.PowerShell_profile.ps1'),
+                (Join-Path $realDocs 'WindowsPowerShell\Microsoft.PowerShell_profile.ps1')
+            ) | Sort-Object -Unique | Where-Object { $_ -ne $ps7Path -and $_ -ne $ps5Path -and (Test-Path $_) }
+            foreach ($stale in $staleCandidates) {
+                if ($DRY) { Write-Log "  [DRY] perfil obsoleto -> renombrar: $stale"; continue }
+                try {
+                    Move-Item $stale "$stale.vorterm-stale-$(Get-Date -Format yyyyMMddHHmmss)" -Force
+                    Write-Log "  [OK] perfil obsoleto apartado: $stale"
+                } catch {
+                    Write-Log "  [!!] no se pudo apartar perfil obsoleto: $stale"
+                }
+            }
 
             $escapedPath  = $opts.WorkDir -replace "'", "''"
             $themeLeaf    = $opts.ThemeFile
@@ -1064,9 +1106,12 @@ if (-not `$global:__VortermStarted) {
                         if ($json.profiles.list) {
                             foreach ($prof in $json.profiles.list) {
                                 if ($prof.guid -eq $ps5Guid) { continue }
+                                # Solo el perfil PS7 de verdad. Match por nombre estricto:
+                                # "Developer PowerShell for VS 2022" y similares NO deben
+                                # tocarse (pisar su commandline rompe el dev shell de VS).
                                 $isPwsh = ($prof.guid -eq $ps7Guid) -or
                                           ($prof.commandline -match '(?i)\bpwsh(\.exe)?\b') -or
-                                          ($prof.name -match '(?i)PowerShell' -and $prof.name -notmatch '(?i)Windows PowerShell')
+                                          ($prof.name -match '^(?i)PowerShell(\s*7(\.\d+)?)?$')
                                 if ($isPwsh) {
                                     Set-Prop $prof 'commandline' 'pwsh.exe -NoLogo -NoProfileLoadTime'
                                     Set-Prop $prof 'startingDirectory' $opts.WorkDir
@@ -1365,11 +1410,23 @@ $ResetLogic = {
         # ---- 1. Profiles --------------------------------
         if ($opts.CleanProfile) {
             Set-Status 'Profiles' 8
-            $userDocs = Join-Path $env:USERPROFILE 'Documents'
-            $profileDirs = @(
-                Join-Path $userDocs 'PowerShell',
-                Join-Path $userDocs 'WindowsPowerShell'
-            )
+            # Cubrir Documents local Y redirigido (OneDrive Known Folder Move):
+            # pwsh carga $PROFILE de la carpeta real; limpiar solo una deja
+            # perfiles viejos activos que pisan el tema en la proxima instalacion.
+            $docsCandidates = @((Join-Path $env:USERPROFILE 'Documents'))
+            try {
+                $realDocs = [Environment]::GetFolderPath('MyDocuments')
+                if ($realDocs) { $docsCandidates += $realDocs }
+            } catch {}
+            if ($env:OneDrive) {
+                $docsCandidates += (Join-Path $env:OneDrive 'Documents')
+                $docsCandidates += (Join-Path $env:OneDrive 'Documentos')
+            }
+            $profileDirs = @()
+            foreach ($docs in ($docsCandidates | Sort-Object -Unique)) {
+                $profileDirs += (Join-Path $docs 'PowerShell')
+                $profileDirs += (Join-Path $docs 'WindowsPowerShell')
+            }
             $profileNames = @(
                 'profile.ps1',
                 'Microsoft.PowerShell_profile.ps1',
@@ -2220,13 +2277,25 @@ foreach ($n in 'PathBox','BrowseBtn','LogBox','Progress','StatusText','ExitBtn',
     $controls[$n] = $window.FindName($n)
 }
 
-# Layout adaptativo: el grid llena el viewport del ScrollViewer cuando hay sitio
-# (la fila estrella de la consola se estira); si la ventana es mas chica que el
-# contenido minimo, aparece la scrollbar dorada en vez de cortar los botones.
-$controls.RootScroll.Add_SizeChanged({
+# Layout adaptativo: altura del grid = viewport (o el minimo si la ventana es
+# mas chica -> scrollbar dorada). Altura FIJA, no MinHeight: si el grid pudiera
+# crecer con el contenido, el log alargaria la pagina entera y la vista no
+# seguiria al texto; asi el RichTextBox scrollea internamente y ScrollToEnd
+# mantiene la consola pegada a la ultima linea.
+$script:RootBaseMin = 710      # layout minimo con PathsPanel vacio (medido)
+$script:PathsBaseH  = 0
+function Update-RootHeight {
     $vh = $controls.RootScroll.ViewportHeight
-    if ($vh -gt 0) { $controls.RootGrid.MinHeight = $vh }
-})
+    if ($vh -le 0) { return }
+    $extra = 0
+    if ($controls.PathsPanel.ActualHeight -gt 0) {
+        if ($script:PathsBaseH -eq 0) { $script:PathsBaseH = $controls.PathsPanel.ActualHeight }
+        $extra = [Math]::Max(0, $controls.PathsPanel.ActualHeight - $script:PathsBaseH)
+    }
+    $controls.RootGrid.Height = [Math]::Max($vh, $script:RootBaseMin + $extra)
+}
+$controls.RootScroll.Add_SizeChanged({ Update-RootHeight })
+$controls.PathsPanel.Add_SizeChanged({ Update-RootHeight })
 
 # ------ Log document (RichTextBox con colores) ---------------
 function Reset-LogDocument {
