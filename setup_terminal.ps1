@@ -428,6 +428,68 @@ $InstallLogic = {
             Write-Log "  [!!] winget missing, skipping all packages"
         }
 
+        # ---- Font fallback: descarga directa si winget no la dejo instalada ---
+        # En equipos nuevos winget a veces falla con la fuente (source desactualizado,
+        # scope maquina sin admin...). Plan B: zip oficial de nerd-fonts e instalacion
+        # por usuario (LOCALAPPDATA\...\Fonts + HKCU), sin necesidad de admin.
+        if ($opts.Font -and -not $DRY -and
+            -not (Test-FontInstalled '(?i)JetBrainsMono.*(Nerd\s*Font|\bN[FL][MP]?\b)')) {
+            Set-Status 'Font (direct download)' 56
+            Write-Log "  [..] Nerd Font aun no instalada, fallback: descarga directa de GitHub..."
+            try {
+                $fontTmp = Join-Path $env:TEMP "vorterm-nerdfont-$PID"
+                $zipPath = Join-Path $fontTmp 'JetBrainsMono.zip'
+                New-Item -ItemType Directory -Path $fontTmp -Force | Out-Null
+                $url = 'https://github.com/ryanoasis/nerd-fonts/releases/latest/download/JetBrainsMono.zip'
+                [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+                Invoke-WebRequest -Uri $url -OutFile $zipPath -UseBasicParsing -ErrorAction Stop
+                Expand-Archive -Path $zipPath -DestinationPath $fontTmp -Force
+
+                $userFonts = Join-Path $env:LOCALAPPDATA 'Microsoft\Windows\Fonts'
+                New-Item -ItemType Directory -Path $userFonts -Force | Out-Null
+                $reg = 'HKCU:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts'
+                if (-not (Test-Path $reg)) { New-Item -Path $reg -Force | Out-Null }
+
+                Add-Type -AssemblyName System.Drawing -ErrorAction SilentlyContinue
+                $installed = 0
+                foreach ($ttf in (Get-ChildItem $fontTmp -Filter '*.ttf' -File)) {
+                    $dest = Join-Path $userFonts $ttf.Name
+                    Copy-Item $ttf.FullName $dest -Force
+                    # Nombre de familia real del TTF para el valor de registro
+                    $fam = $null
+                    try {
+                        $pfc = New-Object System.Drawing.Text.PrivateFontCollection
+                        $pfc.AddFontFile($dest)
+                        $fam = $pfc.Families[0].Name
+                        $pfc.Dispose()
+                    } catch {}
+                    if (-not $fam) { $fam = [IO.Path]::GetFileNameWithoutExtension($ttf.Name) }
+                    New-ItemProperty -Path $reg -Name "$fam (TrueType)" -Value $dest `
+                                     -PropertyType String -Force | Out-Null
+                    $installed++
+                }
+                Remove-Item $fontTmp -Recurse -Force -ErrorAction SilentlyContinue
+                if ($installed -gt 0) {
+                    # Notificar cambio de fuentes a las apps (WM_FONTCHANGE)
+                    try {
+                        Add-Type -Namespace Vorterm -Name FontMsg -MemberDefinition @'
+[System.Runtime.InteropServices.DllImport("user32.dll")]
+public static extern System.IntPtr SendMessageTimeout(System.IntPtr hWnd, uint Msg, System.UIntPtr wParam, System.IntPtr lParam, uint fuFlags, uint uTimeout, out System.UIntPtr lpdwResult);
+'@ -ErrorAction SilentlyContinue
+                        $r = [UIntPtr]::Zero
+                        [void][Vorterm.FontMsg]::SendMessageTimeout([IntPtr]0xffff, 0x001D, [UIntPtr]::Zero, [IntPtr]::Zero, 2, 1000, [ref]$r)
+                    } catch {}
+                    Write-Log "  [OK] Nerd Font instalada por usuario ($installed ficheros TTF)"
+                } else {
+                    Write-Log "  [!!] Font fallback: zip sin TTFs"
+                    $script:failures += 'font'
+                }
+            } catch {
+                Write-Log "  [!!] Font fallback: $($_.Exception.Message)"
+                $script:failures += 'font'
+            }
+        }
+
         # ---- WSL (separate from winget, uses wsl --install) ---
         if ($opts.WSL) {
             Set-Status 'WSL' 58
@@ -548,23 +610,25 @@ $InstallLogic = {
 
             # Mapping GDI family -> typographic (DirectWrite) family.
             # Nerd Font v3 convention: NFM=Mono, NFP=Propo, NF=full.
+            # Prioridad NF (familia completa) primero: es la cara que usa el perfil
+            # de referencia "PowerShell Main" (JetBrainsMono Nerd Font).
             $gdiToTypo = [ordered]@{
+                'JetBrainsMono NF'     = 'JetBrainsMono Nerd Font'
+                'JetBrainsMonoNL NF'   = 'JetBrainsMonoNL Nerd Font'
                 'JetBrainsMono NFM'    = 'JetBrainsMono Nerd Font Mono'
                 'JetBrainsMonoNL NFM'  = 'JetBrainsMonoNL Nerd Font Mono'
                 'JetBrainsMono NFP'    = 'JetBrainsMono Nerd Font Propo'
                 'JetBrainsMonoNL NFP'  = 'JetBrainsMonoNL Nerd Font Propo'
-                'JetBrainsMono NF'     = 'JetBrainsMono Nerd Font'
-                'JetBrainsMonoNL NF'   = 'JetBrainsMonoNL Nerd Font'
                 'CaskaydiaCove NF'     = 'CaskaydiaCove Nerd Font'
                 'CaskaydiaCove NFM'    = 'CaskaydiaCove Nerd Font Mono'
                 'CaskaydiaMono NF'     = 'CaskaydiaMono Nerd Font'
-                'FiraCode NFM'         = 'FiraCode Nerd Font Mono'
                 'FiraCode NF'          = 'FiraCode Nerd Font'
-                'Hack NFM'             = 'Hack Nerd Font Mono'
+                'FiraCode NFM'         = 'FiraCode Nerd Font Mono'
                 'Hack NF'              = 'Hack Nerd Font'
+                'Hack NFM'             = 'Hack Nerd Font Mono'
             }
 
-            # Prioridad: Mono > Propo > full. Iterar mapping en orden.
+            # Prioridad: NF > Mono > Propo. Iterar mapping en orden.
             foreach ($gdiName in $gdiToTypo.Keys) {
                 if ($gdi -contains $gdiName) {
                     $typo = $gdiToTypo[$gdiName]
@@ -576,13 +640,14 @@ $InstallLogic = {
             # Algunas instalaciones (Nerd Font v2 o variantes especiales) ya exponen
             # el typographic name como GDI family. Probar match directo.
             $directPriority = @(
+                'JetBrainsMono Nerd Font',
+                'JetBrainsMonoNL Nerd Font',
                 'JetBrainsMono Nerd Font Mono',
                 'JetBrainsMonoNL Nerd Font Mono',
                 'JetBrainsMono Nerd Font Propo',
-                'JetBrainsMono Nerd Font',
-                'CaskaydiaCove Nerd Font Mono',
-                'FiraCode Nerd Font Mono',
-                'Hack Nerd Font Mono'
+                'CaskaydiaCove Nerd Font',
+                'FiraCode Nerd Font',
+                'Hack Nerd Font'
             )
             foreach ($cand in $directPriority) {
                 if ($gdi -contains $cand) { return $cand }
@@ -595,7 +660,7 @@ $InstallLogic = {
             if ($hit) { return $hit }
 
             Write-Log "  [!!] No Nerd Font detected. Falling back to default DWrite name."
-            return 'JetBrainsMono Nerd Font Mono'
+            return 'JetBrainsMono Nerd Font'
         }
         $nerdFontFace = Get-InstalledNerdFont
         Write-Log "  [OK] detected font face (DWrite typographic): '$nerdFontFace'"
@@ -1008,13 +1073,23 @@ if (-not `$global:__VortermStarted) {
                                     if ($opts.Elevate) {
                                         Set-Prop $prof 'elevate' $true
                                     }
+                                    # Mismo bloque font que el equipo de referencia:
+                                    # face + size 14 + weight normal + glyphs integrados a color
                                     if (-not $prof.font) {
-                                        Set-Prop $prof 'font' ([pscustomobject]@{ face = $nerdFontFace; size = 14; cellHeight = '1.2'; cellWidth = '0.6' })
+                                        Set-Prop $prof 'font' ([pscustomobject]@{
+                                            face = $nerdFontFace; size = 14; weight = 'normal'
+                                            builtinGlyphs = $true; colorGlyphs = $true })
                                     } else {
                                         Set-Prop $prof.font 'face' $nerdFontFace
                                         Set-Prop $prof.font 'size' 14
-                                        Set-Prop $prof.font 'cellHeight' '1.2'
-                                        Set-Prop $prof.font 'cellWidth' '0.6'
+                                        Set-Prop $prof.font 'weight' 'normal'
+                                        Set-Prop $prof.font 'builtinGlyphs' $true
+                                        Set-Prop $prof.font 'colorGlyphs' $true
+                                        foreach ($k in 'cellHeight','cellWidth') {
+                                            if ($prof.font.PSObject.Properties.Name -contains $k) {
+                                                $prof.font.PSObject.Properties.Remove($k)
+                                            }
+                                        }
                                     }
                                     Write-Log "  [OK] WT profile patched: $($prof.name)"
                                     $patched = $true
@@ -1030,7 +1105,9 @@ if (-not `$global:__VortermStarted) {
                                 commandline       = 'pwsh.exe -NoLogo -NoProfileLoadTime'
                                 startingDirectory = $opts.WorkDir
                                 hidden            = $false
-                                font              = [pscustomobject]@{ face = $nerdFontFace; size = 14; cellHeight = '1.2'; cellWidth = '0.6' }
+                                font              = [pscustomobject]@{
+                                    face = $nerdFontFace; size = 14; weight = 'normal'
+                                    builtinGlyphs = $true; colorGlyphs = $true }
                             }
                             if ($opts.Elevate) { Set-Prop $newProf 'elevate' $true }
                             if (-not $json.profiles.list) { Set-Prop $json.profiles 'list' @() }
@@ -1936,12 +2013,16 @@ if ($NoGui) {
     <Border Style="{StaticResource CornerBL}"/>
     <Border Style="{StaticResource CornerBR}"/>
 
-    <Grid Margin="14">
+    <ScrollViewer x:Name="RootScroll" Margin="14"
+                  VerticalScrollBarVisibility="Auto"
+                  HorizontalScrollBarVisibility="Disabled"
+                  Focusable="False">
+    <Grid x:Name="RootGrid">
       <Grid.RowDefinitions>
         <RowDefinition Height="Auto"/>
         <RowDefinition Height="Auto"/>
         <RowDefinition Height="Auto"/>
-        <RowDefinition Height="*" MinHeight="120"/>
+        <RowDefinition Height="*" MinHeight="240"/>
         <RowDefinition Height="Auto"/>
         <RowDefinition Height="Auto"/>
       </Grid.RowDefinitions>
@@ -1993,8 +2074,6 @@ if ($NoGui) {
           <StackPanel>
             <TextBlock Text="II / SETUP" Style="{StaticResource RomanLabel}"/>
             <Border Style="{StaticResource SectionRule}"/>
-            <CheckBox x:Name="cb_elevate" Content="admin tabs (UAC por pestaña)" IsChecked="False"
-                      ToolTip="Las pestañas de PowerShell 7 se abren elevadas.&#10;OJO: Windows pedira UAC en CADA pestaña nueva."/>
             <CheckBox x:Name="cb_vscode"  Content="visual studio code"  IsChecked="False"/>
             <CheckBox x:Name="cb_neovim"  Content="neovim"              IsChecked="False"/>
             <CheckBox x:Name="cb_7zip"    Content="7-zip"               IsChecked="False"/>
@@ -2089,6 +2168,7 @@ if ($NoGui) {
                 ToolTip="Instala stack completo: PS7, WT, Git, Nerd Font, oh-my-posh + tema"/>
       </StackPanel>
     </Grid>
+    </ScrollViewer>
   </Grid>
 </Window>
 '@
@@ -2134,11 +2214,19 @@ $window.Top  = $wa.Top  + [Math]::Max(0, ($wa.Height - $window.Height) / 2)
 
 $controls = @{}
 foreach ($n in 'PathBox','BrowseBtn','LogBox','Progress','StatusText','ExitBtn','ResetBtn','InstallBtn','PauseBtn',
-               'PathsPanel',
-               'cb_elevate','cb_vscode','cb_neovim','cb_7zip','cb_github','cb_wsl',
+               'PathsPanel','RootScroll','RootGrid',
+               'cb_vscode','cb_neovim','cb_7zip','cb_github','cb_wsl',
                'cb_clean_profile','cb_clean_wt','cb_clean_modules','cb_clean_history') {
     $controls[$n] = $window.FindName($n)
 }
+
+# Layout adaptativo: el grid llena el viewport del ScrollViewer cuando hay sitio
+# (la fila estrella de la consola se estira); si la ventana es mas chica que el
+# contenido minimo, aparece la scrollbar dorada en vez de cortar los botones.
+$controls.RootScroll.Add_SizeChanged({
+    $vh = $controls.RootScroll.ViewportHeight
+    if ($vh -gt 0) { $controls.RootGrid.MinHeight = $vh }
+})
 
 # ------ Log document (RichTextBox con colores) ---------------
 function Reset-LogDocument {
@@ -2283,7 +2371,7 @@ $controls.InstallBtn.Add_Click({
         PoshGit      = $true
         WriteProfile = $true
         WTConfig     = $true
-        Elevate      = $controls.cb_elevate.IsChecked
+        Elevate      = $false
         VSCode       = $controls.cb_vscode.IsChecked
         Neovim       = $controls.cb_neovim.IsChecked
         SevenZip     = $controls.cb_7zip.IsChecked
