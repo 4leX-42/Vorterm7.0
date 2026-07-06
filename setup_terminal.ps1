@@ -327,6 +327,21 @@ $InstallLogic = {
                 Write-Log "  [OK] GitHub Desktop already installed"
             } else { $pkgs += @{ Id='GitHub.GitHubDesktop'; Name='GitHub Desktop' } }
         }
+        if ($opts.ClaudeCode) {
+            if (Test-Optional 'claude' @("$env:LOCALAPPDATA\Programs\claude-code\claude.exe")) {
+                Write-Log "  [OK] Claude Code already installed"
+            } else { $pkgs += @{ Id='Anthropic.ClaudeCode'; Name='Claude Code' } }
+        }
+        if ($opts.Codex) {
+            if (Test-Optional 'codex' @()) {
+                Write-Log "  [OK] Codex CLI already installed"
+            } else { $pkgs += @{ Id='OpenAI.Codex'; Name='Codex CLI' } }
+        }
+        if ($opts.Antigravity) {
+            if (Test-Optional 'antigravity' @("$env:LOCALAPPDATA\Programs\Antigravity\Antigravity.exe")) {
+                Write-Log "  [OK] Antigravity already installed"
+            } else { $pkgs += @{ Id='Google.Antigravity'; Name='Antigravity' } }
+        }
 
         if ($hasWinget -and $pkgs.Count -gt 0 -and $DRY) {
             foreach ($p in $pkgs) {
@@ -1018,6 +1033,33 @@ if (-not `$global:__VortermStarted) {
         if ($opts.WTConfig) {
             Set-Status 'Windows Terminal config' 88
 
+            # Fondo + icono del perfil (mismo look que el equipo de referencia):
+            # foto Unsplash con opacidad 0.45 e icono moneda BTC. Descarga una
+            # vez a LOCALAPPDATA; si falla se configura el resto sin ese asset.
+            $assetDir = Join-Path $env:LOCALAPPDATA 'Vorterm'
+            $bgPath   = Join-Path $assetDir 'vorterm-bg.jpg'
+            $icoPath  = Join-Path $assetDir 'vorterm-btc.png'
+            $assets = @(
+                @{ Path = $bgPath;  Url = 'https://images.unsplash.com/photo-1544550471-f460ef599d8e?w=2670&q=85&fm=jpg'; Tag = 'fondo' },
+                @{ Path = $icoPath; Url = 'https://cdn-icons-png.flaticon.com/512/5968/5968260.png';                      Tag = 'icono BTC' }
+            )
+            foreach ($a in $assets) {
+                if ($DRY) { Write-Log "  [DRY] $($a.Tag) -> $($a.Path)"; continue }
+                if (Test-Path $a.Path) { Write-Log "  [OK] $($a.Tag) ya presente: $($a.Path)"; continue }
+                try {
+                    if (-not (Test-Path $assetDir)) { New-Item -ItemType Directory -Path $assetDir -Force | Out-Null }
+                    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+                    Invoke-WebRequest -Uri $a.Url -OutFile $a.Path -UseBasicParsing -ErrorAction Stop
+                    if ((Get-Item $a.Path).Length -lt 5kb) { throw 'descarga incompleta' }
+                    Write-Log "  [OK] $($a.Tag) descargado: $($a.Path)"
+                } catch {
+                    Write-Log "  [!!] $($a.Tag): $($_.Exception.Message) (se sigue sin el)"
+                    Remove-Item $a.Path -Force -ErrorAction SilentlyContinue
+                    if ($a.Tag -eq 'fondo') { $bgPath = $null } else { $icoPath = $null }
+                }
+            }
+            if ($DRY) { $bgPath = $null; $icoPath = $null }
+
             $wtCandidates = @(
                 "$env:LOCALAPPDATA\Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json",
                 "$env:LOCALAPPDATA\Packages\Microsoft.WindowsTerminalPreview_8wekyb3d8bbwe\LocalState\settings.json",
@@ -1146,6 +1188,16 @@ if (-not `$global:__VortermStarted) {
                                             }
                                         }
                                     }
+                                    # Look del equipo de referencia: fondo, icono
+                                    # BTC, cursor de barra, scrollbar visible
+                                    if ($bgPath) {
+                                        Set-Prop $prof 'backgroundImage' $bgPath
+                                        Set-Prop $prof 'backgroundImageOpacity' 0.45
+                                    }
+                                    if ($icoPath) { Set-Prop $prof 'icon' $icoPath }
+                                    Set-Prop $prof 'cursorShape' 'bar'
+                                    Set-Prop $prof 'scrollbarState' 'visible'
+                                    Set-Prop $prof 'adjustIndistinguishableColors' 'automatic'
                                     Write-Log "  [OK] WT profile patched: $($prof.name)"
                                     $patched = $true
                                 }
@@ -1160,10 +1212,18 @@ if (-not `$global:__VortermStarted) {
                                 commandline       = 'pwsh.exe -NoLogo -NoProfileLoadTime'
                                 startingDirectory = $opts.WorkDir
                                 hidden            = $false
+                                cursorShape       = 'bar'
+                                scrollbarState    = 'visible'
+                                adjustIndistinguishableColors = 'automatic'
                                 font              = [pscustomobject]@{
                                     face = $nerdFontFace; size = 14; weight = 'normal'
                                     builtinGlyphs = $true; colorGlyphs = $true }
                             }
+                            if ($bgPath) {
+                                Set-Prop $newProf 'backgroundImage' $bgPath
+                                Set-Prop $newProf 'backgroundImageOpacity' 0.45
+                            }
+                            if ($icoPath) { Set-Prop $newProf 'icon' $icoPath }
                             if ($opts.Elevate) { Set-Prop $newProf 'elevate' $true }
                             if (-not $json.profiles.list) { Set-Prop $json.profiles 'list' @() }
                             $json.profiles.list = @($newProf) + @($json.profiles.list)
@@ -1759,6 +1819,9 @@ if ($NoGui) {
         SevenZip     = $false
         GitHubDesktop = $false
         WSL          = $false
+        ClaudeCode   = $false
+        Codex        = $false
+        Antigravity  = $false
         Policy       = $true
         Verify       = $true
         DryRun       = [bool]$DryRun
@@ -2147,6 +2210,12 @@ if ($NoGui) {
             <CheckBox x:Name="cb_github"  Content="github desktop"      IsChecked="False"/>
             <CheckBox x:Name="cb_wsl"     Content="wsl (linux subsystem)" IsChecked="False"
                       ToolTip="Instala WSL2 + Ubuntu. Puede requerir reinicio."/>
+            <CheckBox x:Name="cb_claude"  Content="claude code"         IsChecked="False"
+                      ToolTip="CLI agente de Anthropic (winget Anthropic.ClaudeCode)"/>
+            <CheckBox x:Name="cb_codex"   Content="codex cli (gpt)"     IsChecked="False"
+                      ToolTip="CLI agente de OpenAI (winget OpenAI.Codex)"/>
+            <CheckBox x:Name="cb_antigrav" Content="antigravity"        IsChecked="False"
+                      ToolTip="IDE agente de Google (winget Google.Antigravity)"/>
           </StackPanel>
         </Grid>
 
@@ -2283,6 +2352,7 @@ $controls = @{}
 foreach ($n in 'PathBox','BrowseBtn','LogBox','Progress','StatusText','ExitBtn','ResetBtn','InstallBtn','PauseBtn',
                'PathsPanel','RootScroll','RootGrid',
                'cb_vscode','cb_neovim','cb_7zip','cb_github','cb_wsl',
+               'cb_claude','cb_codex','cb_antigrav',
                'cb_clean_profile','cb_clean_wt','cb_clean_modules','cb_clean_history') {
     $controls[$n] = $window.FindName($n)
 }
@@ -2463,6 +2533,9 @@ $controls.InstallBtn.Add_Click({
         SevenZip     = $controls.cb_7zip.IsChecked
         GitHubDesktop = $controls.cb_github.IsChecked
         WSL          = $controls.cb_wsl.IsChecked
+        ClaudeCode   = $controls.cb_claude.IsChecked
+        Codex        = $controls.cb_codex.IsChecked
+        Antigravity  = $controls.cb_antigrav.IsChecked
         Policy       = $true
         Verify       = $true
         DryRun       = $false
