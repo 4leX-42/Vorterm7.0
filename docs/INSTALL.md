@@ -6,7 +6,7 @@
 | :-- | :-- |
 | Windows 10 21H2+ or Windows 11 | Windows PowerShell 5.1 runs the installer; it installs PowerShell 7 itself |
 | winget (App Installer) | Preinstalled on Windows 11. Without it packages are skipped and reported |
-| Internet | winget packages, Nerd Font fallback, PowerShell Gallery modules, the two profile images |
+| Internet | winget packages, Nerd Font fallback, PowerShell Gallery modules, the profile icon (the background ships in `assets/`) |
 | Admin rights | If your account is an administrator, Vorterm relaunches itself elevated (one UAC prompt). With a standard account it runs without admin on purpose (elevating with someone else's credentials would configure *their* profile): PowerShell 7 and oh-my-posh then fall back to the portable builds. `-NoElevate` skips the relaunch |
 
 The LAB option needs none of the above: it only writes files.

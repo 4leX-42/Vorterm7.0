@@ -1386,18 +1386,33 @@ if (-not `$global:__VortermStarted) {
         if ($opts.WTConfig) {
             Set-Status 'Windows Terminal config' 88
 
-            # Fondo + icono del perfil (mismo look que el equipo de referencia):
-            # foto Unsplash con opacidad 0.45 e icono moneda BTC. Descarga una
-            # vez a LOCALAPPDATA; si falla se configura el resto sin ese asset.
+            # Fondo + icono del perfil: fondo de casquillos incluido en el repo
+            # (assets\vorterm-bg.png; si falta, se descarga del repo) e icono moneda
+            # BTC. Se copian a LOCALAPPDATA; el fondo se actualiza si el del repo cambia.
             $assetDir = Join-Path $env:LOCALAPPDATA 'Vorterm'
-            $bgPath   = Join-Path $assetDir 'vorterm-bg.jpg'
+            $bgPath   = Join-Path $assetDir 'vorterm-bg.png'
             $icoPath  = Join-Path $assetDir 'vorterm-btc.png'
             $assets = @(
-                @{ Path = $bgPath;  Url = 'https://images.unsplash.com/photo-1544550471-f460ef599d8e?w=2670&q=85&fm=jpg'; Tag = 'fondo' },
-                @{ Path = $icoPath; Url = 'https://cdn-icons-png.flaticon.com/512/5968/5968260.png';                      Tag = 'icono BTC' }
+                @{ Path = $bgPath;  Src = $opts.BgSrc; Url = 'https://raw.githubusercontent.com/4leX-42/Vorterm7.0/main/assets/vorterm-bg.png'; Tag = 'fondo' },
+                @{ Path = $icoPath; Src = $null;       Url = 'https://cdn-icons-png.flaticon.com/512/5968/5968260.png';                         Tag = 'icono BTC' }
             )
             foreach ($a in $assets) {
                 if ($DRY) { Write-Log "  [DRY] $($a.Tag) -> $($a.Path)"; continue }
+                if ($a.Src -and (Test-Path -LiteralPath $a.Src)) {
+                    try {
+                        if (-not (Test-Path $assetDir)) { New-Item -ItemType Directory -Path $assetDir -Force | Out-Null }
+                        if ((Test-Path -LiteralPath $a.Path) -and
+                            (Get-FileHash -LiteralPath $a.Path).Hash -eq (Get-FileHash -LiteralPath $a.Src).Hash) {
+                            Write-Log "  [OK] $($a.Tag) ya presente: $($a.Path)"
+                        } else {
+                            Copy-Item -LiteralPath $a.Src -Destination $a.Path -Force
+                            Write-Log "  [OK] $($a.Tag): $($a.Path)"
+                        }
+                        continue
+                    } catch {
+                        Write-Log "  [..] $($a.Tag): copia local fallida ($($_.Exception.Message)), se descarga"
+                    }
+                }
                 if (Test-Path $a.Path) { Write-Log "  [OK] $($a.Tag) ya presente: $($a.Path)"; continue }
                 try {
                     if (-not (Test-Path $assetDir)) { New-Item -ItemType Directory -Path $assetDir -Force | Out-Null }
@@ -1558,7 +1573,9 @@ if (-not `$global:__VortermStarted) {
                                     $vtDir = Join-Path $env:LOCALAPPDATA 'Vorterm'
                                     if ($bgPath -and (-not $prof.backgroundImage -or $prof.backgroundImage -like "$vtDir*")) {
                                         Set-Prop $prof 'backgroundImage' $bgPath
-                                        Set-Prop $prof 'backgroundImageOpacity' 0.45
+                                        Set-Prop $prof 'backgroundImageOpacity' 0.9
+                                        Set-Prop $prof 'backgroundImageAlignment' 'bottomRight'
+                                        Set-Prop $prof 'backgroundImageStretchMode' 'uniformToFill'
                                     }
                                     if ($icoPath -and (-not $prof.icon -or $prof.icon -like "$vtDir*" -or $prof.icon -like 'ms-appx*')) {
                                         Set-Prop $prof 'icon' $icoPath
@@ -1589,7 +1606,9 @@ if (-not `$global:__VortermStarted) {
                             }
                             if ($bgPath) {
                                 Set-Prop $newProf 'backgroundImage' $bgPath
-                                Set-Prop $newProf 'backgroundImageOpacity' 0.45
+                                Set-Prop $newProf 'backgroundImageOpacity' 0.9
+                                Set-Prop $newProf 'backgroundImageAlignment' 'bottomRight'
+                                Set-Prop $newProf 'backgroundImageStretchMode' 'uniformToFill'
                             }
                             if ($icoPath) { Set-Prop $newProf 'icon' $icoPath }
                             if ($opts.Elevate) { Set-Prop $newProf 'elevate' $true }
@@ -2362,6 +2381,8 @@ function New-VortermLogFile {
 }
 
 $script:LabScriptPath = $null
+$script:BgSrc = $null
+if ($PSScriptRoot) { $script:BgSrc = Join-Path $PSScriptRoot 'assets\vorterm-bg.png' }
 if ($PSScriptRoot) { $script:LabScriptPath = Join-Path $PSScriptRoot 'lab\New-VortermLab.ps1' }
 
 if ($NoGui) {
@@ -2410,6 +2431,7 @@ if ($NoGui) {
         LabRoot      = $LabRoot
         LabAdopt     = [bool]$LabAdopt
         LabScript    = $script:LabScriptPath
+        BgSrc        = $script:BgSrc
         Policy       = $true
         Verify       = $true
         DryRun       = [bool]$DryRun
@@ -3258,6 +3280,7 @@ $controls.InstallBtn.Add_Click({
         LabRoot      = $controls.LabPathBox.Text.Trim().Trim('"')
         LabAdopt     = $false
         LabScript    = $script:LabScriptPath
+        BgSrc        = $script:BgSrc
         Policy       = $true
         Verify       = $true
         DryRun       = $false
