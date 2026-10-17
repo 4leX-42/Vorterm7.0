@@ -1,7 +1,7 @@
 {
-  "name": "Vorterm LAB CloudOps",
+  "name": "Vorterm LAB",
   "version": "1.0.0",
-  "description": "Generic CloudOps / Azure / Microsoft 365 / security working folder with Claude Code conventions. Every file comes from template/; folders listed here are created even when they start empty, and each one is explained in its area README.",
+  "description": "Generic IT / Azure / Microsoft 365 / security working folder with Claude Code conventions. Every file comes from template/; folders listed here are created even when they start empty, and each one is explained in its area README.",
   "directories": [
     "Azure/Scripts",
     "Azure/IaC",

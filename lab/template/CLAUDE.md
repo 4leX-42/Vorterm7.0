@@ -1,6 +1,6 @@
 # LAB - instructions for Claude Code
 
-This folder is an IT / CloudOps working lab: Azure, Microsoft 365, Exchange, Intune,
+This folder is an IT operations lab: Azure, Microsoft 365, Exchange, Intune,
 security operations, automation and documentation. These rules apply to every session
 started here. A `CLAUDE.md` inside an area adds rules for that area only; when the two
 disagree, the area file wins inside its folder.

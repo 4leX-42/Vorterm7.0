@@ -1,4 +1,4 @@
-# LAB - CloudOps / Azure workspace
+# LAB - IT operations lab
 
 A local, git-friendly workspace for Azure, Microsoft 365, Intune, security and IT
 operations work. It is organised so that you, your colleagues and an AI coding agent

@@ -1,6 +1,6 @@
 # lab/
 
-Generator and template of the optional **LAB CloudOps / Azure** folder.
+Generator and template of the optional **LAB** (laboratorio) folder.
 
 | Path | Role |
 | :-- | :-- |
