@@ -7,7 +7,7 @@
 #    -NoGui        : ejecuta en consola, sin ventana (exit 0 = ok, 1 = avisos)
 #    -DryRun       : simula todo, no toca NADA del sistema
 #    -WorkDir      : directorio inicial de las pestanas (def. Documents)
-#    -LabRoot <p>  : crea el laboratorio LAB en <p>\LAB (opcional)
+#    -LabRoot <p>  : crea el LAB en <p>\LAB (opcional)
 #    -LabAdopt     : usa una carpeta LAB existente no creada por Vorterm
 #    -Node / -ClaudeCode / -VSCode : componentes opcionales
 #    -NoMultiPane  : sin m2/m3/m4 ni perfil Mosaic
@@ -1669,11 +1669,11 @@ if (-not `$global:__VortermStarted) {
             }
         }
 
-        # ---- Laboratorio LAB (opcional, solo ficheros locales) ----
+        # ---- LAB (opcional, solo ficheros locales) ----
         # La logica vive en lab\New-VortermLab.ps1 (usable tambien por separado). Sin red,
         # sin inicio de sesion, sin admin y sin tocar Azure/M365: solo carpetas y plantillas.
         if ($opts.Lab) {
-            Set-Status 'Laboratorio (LAB)' 91
+            Set-Status 'Lab' 91
             try {
                 if (-not $opts.LabScript -or -not (Test-Path -LiteralPath $opts.LabScript)) {
                     throw "generador no encontrado: $($opts.LabScript) (falta la carpeta lab\ junto al instalador)"
@@ -2776,7 +2776,7 @@ if ($NoGui) {
             <UniformGrid Columns="2">
               <CheckBox x:Name="cb_multipane" Content="multi-pane"   IsChecked="True"
                         ToolTip="m2 / m3 / m4 (2, 3 o 4 paneles), close N y /commands. Perfil oculto Vorterm Mosaic (negro, sin imagen).&#10;Atajos Ctrl+Shift+3 / B / Z solo si estan libres."/>
-              <CheckBox x:Name="cb_lab"     Content="laboratorio"    IsChecked="False"
+              <CheckBox x:Name="cb_lab"     Content="lab"            IsChecked="False"
                         ToolTip="Estructura de trabajo LAB (Azure, M365, Intune, seguridad...) con CLAUDE.md, plantillas y documentacion. Solo ficheros locales."/>
             </UniformGrid>
             <StackPanel x:Name="LabPanel" Visibility="Collapsed" Margin="26,2,0,6">
@@ -3061,7 +3061,7 @@ $controls.BrowseBtn.Add_Click({
     }
 })
 
-# ------ Laboratorio LAB (opcional) -------------------------
+# ------ LAB (opcional) -------------------------------------
 function Update-LabTarget {
     $r = $controls.LabPathBox.Text.Trim().Trim('"')
     if ($r) { $controls.LabTarget.Text = "-> " + (Join-Path $r 'LAB') } else { $controls.LabTarget.Text = '' }

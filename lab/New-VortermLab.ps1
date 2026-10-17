@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Creates or updates a Vorterm "LAB" (laboratorio) working folder from the bundled template.
+    Creates or updates a Vorterm LAB working folder from the bundled template.
 
 .DESCRIPTION
     Local file operation only. It does not use the network, does not sign in anywhere,

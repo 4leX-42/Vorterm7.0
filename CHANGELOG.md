@@ -3,7 +3,7 @@
 ## 7.2 - 2026-10-17
 
 ### Added
-- **Laboratorio (LAB)** (optional): checkbox, folder picker and unattended `-LabRoot`.
+- **Lab** (optional): checkbox, folder picker and unattended `-LabRoot`.
   Separate generator `lab/New-VortermLab.ps1` with a manifest-driven template; validates
   the path, permissions and an existing LAB before writing; never overwrites or deletes.
 - **Multi-pane**: `m2` / `m3` / `m4` (`-Rows`, `-Claude`), `close N`, `/commands`, hidden

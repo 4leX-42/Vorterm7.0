@@ -1,4 +1,4 @@
-# Laboratorio (LAB)
+# Lab
 
 An optional working folder that Vorterm can create for IT, cloud operations, DevOps and security
 work. It reproduces a way of working with Claude Code (plan, dry run, verify, record) in a
@@ -6,7 +6,7 @@ generic form: no company data, no tenant identifiers, no credentials.
 
 ## Create it
 
-- **From the installer**: tick *laboratorio*, choose the parent folder (default:
+- **From the installer**: tick *lab*, choose the parent folder (default:
   Documents) and press INSTALL. The LAB is created as `<folder>\LAB`.
 - **Unattended**: `setup_terminal.ps1 -NoGui -LabRoot "D:\Work"`.
 - **On its own**, without installing anything else:

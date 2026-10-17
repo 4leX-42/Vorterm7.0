@@ -15,7 +15,7 @@
 ![winget](https://img.shields.io/badge/winget-silent-FCEE0A?logoColor=black)
 ![license](https://img.shields.io/badge/license-MIT-1a1a1a)
 
-[Install](#-install) · [Stack](#-stack) · [Multi-pane](#-multi-pane) · [Laboratorio](#-laboratorio-lab-optional) · [Claude Code](#-claude-code-companion) · [Reset](#-reset)
+[Install](#-install) · [Stack](#-stack) · [Multi-pane](#-multi-pane) · [Lab](#-lab-optional) · [Claude Code](#-claude-code-companion) · [Reset](#-reset)
 
 </td>
 </tr>
@@ -118,9 +118,9 @@ so text stays readable). On by default.
 
 ---
 
-## 🧪 Laboratorio LAB (optional)
+## 🧪 Lab (optional)
 
-Tick **laboratorio**, choose a folder, and Vorterm creates `<folder>\LAB`: a
+Tick **lab**, choose a folder, and Vorterm creates `<folder>\LAB`: a
 ready-to-use working structure for Azure, Microsoft 365, Outlook/Exchange, Intune,
 security, Power Automate, CloudOps, PowerShell and DevOps work, with a `CLAUDE.md`,
 area rules, templates (runbook, change plan, incident, postmortem, project, script, KQL)
