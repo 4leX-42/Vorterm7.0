@@ -5,17 +5,17 @@
 </td>
 <td valign="middle">
 
-### VORTERM 7.1
+### VORTERM 7.2
 
 **From clean Windows to modern dev shell**
 *one click*
 
-![PowerShell](https://img.shields.io/badge/PowerShell-7.x-5391FE?logo=powershell&logoColor=white)
+![PowerShell](https://img.shields.io/badge/PowerShell-5.1%20%7C%207.x-5391FE?logo=powershell&logoColor=white)
 ![Windows](https://img.shields.io/badge/Windows-10%2F11-0078D4?logo=windows&logoColor=white)
 ![winget](https://img.shields.io/badge/winget-silent-FCEE0A?logoColor=black)
 ![license](https://img.shields.io/badge/license-MIT-1a1a1a)
 
-[Install](#-install) · [Stack](#-stack) · [Optional](#-optional) · [Reset](#-reset)
+[Install](#-install) · [Stack](#-stack) · [Multi-pane](#-multi-pane) · [LAB](#-lab-cloudops--azure-optional) · [Claude Code](#-claude-code-companion) · [Reset](#-reset)
 
 </td>
 </tr>
@@ -29,7 +29,16 @@
 INSTALAR.bat
 ```
 
-That's it
+That's it. Re-running it is safe: anything already in place is left alone.
+
+Unattended (no window), for new machines or scripts:
+
+```powershell
+powershell -ExecutionPolicy Bypass -STA -File .\setup_terminal.ps1 -NoGui
+powershell -ExecutionPolicy Bypass -STA -File .\setup_terminal.ps1 -NoGui -Node -ClaudeCode -LabRoot "$env:USERPROFILE\Desktop"
+```
+
+Full options, updates and recovery: [docs/INSTALL.md](docs/INSTALL.md).
 
 <br/>
 
@@ -45,7 +54,7 @@ That's it
 
 ## 📦 Stack
 
-> Silent · sequential &amp; retry-safe · winget-powered
+> Silent · sequential &amp; retry-safe · winget-powered · idempotent
 
 <table align="center">
 <tr>
@@ -74,17 +83,72 @@ PSReadLine · Terminal-Icons · posh-git
 </tr>
 </table>
 
+Your PowerShell profile keeps everything you wrote: Vorterm only manages its own block
+between `# >>> vorterm >>>` and `# <<< vorterm <<<`.
+
 ---
 
 ## 🧩 Optional
 
-`VS Code` · `Neovim` · `7-Zip` · `GitHub Desktop` · `WSL`
+`VS Code` · `Neovim` · `7-Zip` · `GitHub Desktop` · `WSL` · `Node.js LTS` · `Claude Code` · `Codex CLI` · `Antigravity`
+
+---
+
+## 🪟 Multi-pane
+
+One Windows Terminal window, several panes of a hidden black profile (no background image,
+so text stays readable). On by default.
+
+| Command | What it does |
+| :-- | :-- |
+| `m2` / `m3` / `m4` | 2 or 3 columns, or a 2x2 grid, maximized |
+| `-Rows` | stack the panes as rows (vertical monitor) |
+| `-Claude` | start Claude Code in every pane |
+| `close 2` | close pane 2 from any pane (`close 2 3` for several) |
+| `/commands` | cheat sheet in the terminal |
+| `Ctrl+Shift+3 / B / Z` | split in 3 · type in all panes · zoom pane (only if the keys were free) |
+
+---
+
+## 🧪 LAB CloudOps / Azure (optional)
+
+Tick **lab cloudops / azure**, choose a folder, and Vorterm creates `<folder>\LAB`: a
+ready-to-use working structure for Azure, Microsoft 365, Outlook/Exchange, Intune,
+security, Power Automate, CloudOps, PowerShell and DevOps work, with a `CLAUDE.md`,
+area rules, templates (runbook, change plan, incident, postmortem, project, script, KQL)
+and fictitious examples.
+
+- Local files only: no admin, no sign-in, no connection to Azure or Microsoft 365.
+- Never overwrites your files; re-running adds what is missing and refreshes only files
+  you have not edited. An existing folder that Vorterm did not create is never touched
+  unless you choose to add the missing files.
+- Also works on its own: `lab\New-VortermLab.ps1 -Root D:\Work`.
+
+Details: [docs/LAB.md](docs/LAB.md).
+
+---
+
+## 🤖 Claude Code companion
+
+**[Claude Code Setup Guide](https://github.com/4leX-42/CLAUDE_CODE-SETUP_GUIDE)** is the
+official complement: Vorterm prepares the terminal (shell, fonts, Git, Node.js, execution
+policy, profile); the Setup Guide configures Claude Code on top of it (plugins, MCP
+servers, permissions, status line, second profile).
+
+1. Vorterm (tick **node.js lts** and, if you like, **claude code**).
+2. Claude Code Setup Guide: `pwsh -File install.ps1`.
+
+Each works on its own; together they never edit the same lines (the Setup Guide writes
+its own marked block in the profile, outside Vorterm's).
 
 ---
 
 ## 🔄 Reset
 
-One click. Restores profiles, wipes history, removes terminal modules, resets WT — preserves your schemes & keybinds.
+One click. Removes only what Vorterm added: its profile block (your own lines stay), the
+user copies of its modules, the Mosaic profile and its shortcuts, and returns Windows
+Terminal settings to the state before Vorterm. A `.before-reset-*` copy is kept every time.
+Your LAB folder is never touched.
 
 ---
 
@@ -92,6 +156,6 @@ One click. Restores profiles, wipes history, removes terminal modules, resets WT
 
 **Build · Ship · Forget**
 
-<sub>MIT © Vorterm</sub>
+<sub>MIT © Vorterm · [Changelog](CHANGELOG.md)</sub>
 
 </div>

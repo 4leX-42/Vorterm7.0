@@ -1,0 +1,21 @@
+{
+  "comment": "EXAMPLE values only. Copy to config/lab.json (git-ignored) and replace them. No passwords or client secrets in this file.",
+  "organization": "Contoso",
+  "tenantDomain": "contoso.example",
+  "tenantId": "00000000-0000-0000-0000-000000000000",
+  "azure": {
+    "subscriptionId": "00000000-0000-0000-0000-000000000000",
+    "defaultLocation": "westeurope",
+    "labResourceGroupPrefix": "rg-lab-"
+  },
+  "automation": {
+    "appId": "00000000-0000-0000-0000-000000000000",
+    "certificateThumbprint": "0000000000000000000000000000000000000000",
+    "certificateStore": "Cert:\\CurrentUser\\My"
+  },
+  "paths": {
+    "exports": "exports",
+    "logs": "logs",
+    "evidence": "evidence"
+  }
+}

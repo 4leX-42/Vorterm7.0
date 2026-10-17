@@ -1,0 +1,72 @@
+# ---- Secrets and credentials ------------------------------------------------
+.env
+.env.*
+!.env.example
+secrets/
+*.pfx
+*.p12
+*.pem
+*.key
+*.cer
+*.crt
+*.publishsettings
+*.azureProfile
+msal_token_cache*
+token_cache*
+*.kdbx
+
+# ---- Local configuration (only examples are committed) ----------------------
+config/*
+!config/README.md
+!config/*.example.*
+
+# ---- Generated data: exports, logs, evidence --------------------------------
+exports/*
+!exports/README.md
+logs/*
+!logs/README.md
+evidence/*
+!evidence/README.md
+*.log
+transcript-*.txt
+
+# ---- Real data that tends to leak into repos --------------------------------
+*.csv
+*.xlsx
+*.xls
+*.pst
+*.ost
+*.msg
+*.eml
+*.evtx
+*.etl
+*.dmp
+*.zip
+*.7z
+
+# ---- Infrastructure as code state ------------------------------------------
+*.tfstate
+*.tfstate.*
+.terraform/
+*.tfvars
+!*.tfvars.example
+crash.log
+
+# ---- Intune packaging -------------------------------------------------------
+Intune/Packages/*
+!Intune/Packages/README.md
+*.intunewin
+
+# ---- Tooling ----------------------------------------------------------------
+.claude/settings.local.json
+.mcp.json
+.vscode/
+.venv/
+__pycache__/
+node_modules/
+*.tmp
+*.bak
+~$*
+desktop.ini
+Thumbs.db
+.DS_Store

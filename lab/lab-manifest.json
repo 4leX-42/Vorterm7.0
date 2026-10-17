@@ -1,0 +1,33 @@
+{
+  "name": "Vorterm LAB CloudOps",
+  "version": "1.0.0",
+  "description": "Generic CloudOps / Azure / Microsoft 365 / security working folder with Claude Code conventions. Every file comes from template/; folders listed here are created even when they start empty, and each one is explained in its area README.",
+  "directories": [
+    "Azure/Scripts",
+    "Azure/IaC",
+    "Microsoft365/Scripts",
+    "Microsoft365/EntraID",
+    "Intune/Scripts",
+    "Intune/Policies",
+    "Intune/Packages",
+    "Cybersecurity/Incidents",
+    "Cybersecurity/Queries",
+    "Cybersecurity/Hardening",
+    "PowerAutomate/Flows",
+    "Outlook/Scripts",
+    "Outlook/Troubleshooting",
+    "CloudOps/Runbooks",
+    "CloudOps/Monitoring",
+    "PowerShell/Modules",
+    "PowerShell/Scripts",
+    "PowerShell/Tests",
+    "DevOps/Pipelines",
+    "Documentation/Decisions",
+    "Documentation/Procedures",
+    "Documentation/Reports",
+    "config",
+    "exports",
+    "logs",
+    "evidence"
+  ]
+}

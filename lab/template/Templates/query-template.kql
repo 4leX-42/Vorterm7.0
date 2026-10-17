@@ -1,0 +1,12 @@
+// <Title of the query>
+// Purpose : what question this answers
+// Tables  : tables used and the license / connector they require
+// Params  : lookback, thresholds, names (all set in the let statements below)
+// Output  : one row per ...
+// Author  : <name>   Created: YYYY-MM-DD   Tested on: <workspace type, not its ID>
+// Note    : read-only. Known false positives: ...
+let lookback = 7d;
+<TableName>
+| where TimeGenerated > ago(lookback)
+| summarize Count = count() by <Column>
+| order by Count desc

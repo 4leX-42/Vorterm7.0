@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "azure-readonly": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@azure/mcp@3.0.0", "server", "start", "--read-only"]
+    }
+  }
+}
