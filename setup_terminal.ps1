@@ -25,10 +25,46 @@ param(
     [switch]$ClaudeCode,
     [switch]$VSCode,
     [switch]$NoMultiPane,
-    [switch]$Reset
+    [switch]$Reset,
+    [switch]$NoElevate
 )
 
 $script:VortermVersion = '7.2'
+
+# ------ Elevacion automatica ----------------------------------
+# Instaladores de equipo (MSI de PowerShell 7, oh-my-posh, WSL...) necesitan admin.
+# Solo se relanza elevado si ESTA cuenta es administradora (token dividido por UAC):
+# con una cuenta estandar, elevar con credenciales de otro usuario configuraria el
+# perfil y Windows Terminal de ese otro usuario. En ese caso se sigue sin admin y
+# PowerShell 7 / oh-my-posh caen a la version portable.
+$script:IsElevated = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()
+    ).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+if (-not $script:IsElevated -and -not $NoElevate -and -not $DryRun -and $PSCommandPath) {
+    $adminAccount = $false
+    try {
+        # Con UAC el grupo Administradores (S-1-5-32-544) esta en el token como "solo denegar"
+        $adminAccount = [bool](& "$env:SystemRoot\System32\whoami.exe" /groups /fo csv 2>$null | Select-String -SimpleMatch 'S-1-5-32-544')
+    } catch {}
+    if ($adminAccount) {
+        $fwd = @('-NoLogo', '-NoProfile', '-STA', '-ExecutionPolicy', 'Bypass')
+        if (-not $NoGui) { $fwd += @('-WindowStyle', 'Hidden') }
+        $fwd += @('-File', "`"$PSCommandPath`"")
+        foreach ($k in $PSBoundParameters.Keys) {
+            $v = $PSBoundParameters[$k]
+            if ($v -is [System.Management.Automation.SwitchParameter]) { if ($v.IsPresent) { $fwd += "-$k" } }
+            else { $fwd += @("-$k", "`"$v`"") }
+        }
+        try {
+            $p = Start-Process -FilePath "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" `
+                 -ArgumentList $fwd -Verb RunAs -PassThru -Wait:([bool]$NoGui)
+            if ($NoGui) { exit $p.ExitCode }
+            exit 0
+        } catch {
+            # UAC cancelado: se sigue sin admin (los MSI de equipo pueden fallar)
+            Write-Host 'Vorterm: UAC cancelado, se continua sin permisos de administrador.' -ForegroundColor Yellow
+        }
+    }
+}
 
 $ErrorActionPreference = 'Stop'
 $ProgressPreference    = 'SilentlyContinue'
@@ -215,6 +251,9 @@ $InstallLogic = {
             [Security.Principal.WindowsIdentity]::GetCurrent()
             ).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
         Write-Log ("  [{0}] admin rights: {1}" -f $(if($isAdmin){'OK'}else{'..'}), $isAdmin)
+        if (-not $isAdmin) {
+            Write-Log "  [..] sin admin (cuenta estandar o UAC cancelado): PowerShell 7 y oh-my-posh usaran la version portable si winget falla"
+        }
 
         $hasWinget = [bool](Get-Command winget -ErrorAction SilentlyContinue)
         Write-Log ("  [{0}] winget available" -f $(if($hasWinget){'OK'}else{'!!'}))

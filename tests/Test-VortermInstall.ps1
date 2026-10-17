@@ -45,7 +45,7 @@ function Add-Result([string]$Name, [bool]$Pass, [string]$Detail) {
 }
 
 function Invoke-Setup([string[]]$ExtraArgs) {
-    $args2 = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-STA', '-File', $setup, '-NoGui') + $ExtraArgs
+    $args2 = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-STA', '-File', $setup, '-NoGui', '-NoElevate') + $ExtraArgs
     # Start-Process joins ArgumentList with spaces and does not quote: quote by hand.
     $line = ($args2 | ForEach-Object { if ($_ -match '[\s&()]') { '"' + $_ + '"' } else { $_ } }) -join ' '
     $stamp = Get-Date -Format HHmmssfff
