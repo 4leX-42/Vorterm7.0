@@ -2257,10 +2257,17 @@ if ($NoGui) {
       <Setter Property="FontSize" Value="16"/>
     </Style>
 
+    <Style x:Key="GroupLabel" TargetType="TextBlock">
+      <Setter Property="Foreground" Value="{StaticResource GoldDim}"/>
+      <Setter Property="FontFamily" Value="JetBrains Mono, Cascadia Mono, Consolas"/>
+      <Setter Property="FontSize" Value="11"/>
+      <Setter Property="Margin" Value="0,10,0,2"/>
+    </Style>
+
     <Style TargetType="CheckBox">
       <Setter Property="Foreground" Value="#e8e8e8"/>
-      <Setter Property="FontSize" Value="17"/>
-      <Setter Property="Margin" Value="0,8,14,8"/>
+      <Setter Property="FontSize" Value="15"/>
+      <Setter Property="Margin" Value="0,5,12,5"/>
       <Setter Property="VerticalContentAlignment" Value="Center"/>
       <Setter Property="FontFamily" Value="Bahnschrift Light, Bahnschrift, Segoe UI Light"/>
       <Setter Property="Cursor" Value="Hand"/>
@@ -2561,7 +2568,7 @@ if ($NoGui) {
       </StackPanel>
 
       <!-- PATH -->
-      <Grid Grid.Row="1" Margin="8,4,8,8">
+      <Grid x:Name="StartupRow" Grid.Row="1" Margin="8,4,8,8">
         <Grid.ColumnDefinitions>
           <ColumnDefinition Width="Auto"/>
           <ColumnDefinition Width="*"/>
@@ -2579,7 +2586,7 @@ if ($NoGui) {
       </Grid>
 
       <!-- CONFIG: 3 columns -->
-      <Grid Grid.Row="2" Margin="8,8,8,8">
+      <Grid x:Name="ConfigRow" Grid.Row="2" Margin="8,8,8,8">
         <Grid.ColumnDefinitions>
           <ColumnDefinition Width="*"/>
           <ColumnDefinition Width="*"/>
@@ -2590,24 +2597,33 @@ if ($NoGui) {
           <StackPanel x:Name="SetupPanel">
             <TextBlock Text="II / SETUP" Style="{StaticResource RomanLabel}"/>
             <Border Style="{StaticResource SectionRule}"/>
-            <CheckBox x:Name="cb_vscode"  Content="visual studio code"  IsChecked="False"/>
-            <CheckBox x:Name="cb_neovim"  Content="neovim"              IsChecked="False"/>
-            <CheckBox x:Name="cb_7zip"    Content="7-zip"               IsChecked="False"/>
-            <CheckBox x:Name="cb_github"  Content="github desktop"      IsChecked="False"/>
-            <CheckBox x:Name="cb_wsl"     Content="wsl (linux subsystem)" IsChecked="False"
-                      ToolTip="Instala WSL2 + Ubuntu. Puede requerir reinicio."/>
-            <CheckBox x:Name="cb_claude"  Content="claude code"         IsChecked="False"
-                      ToolTip="CLI agente de Anthropic (winget Anthropic.ClaudeCode)"/>
-            <CheckBox x:Name="cb_codex"   Content="codex cli (gpt)"     IsChecked="False"
-                      ToolTip="CLI agente de OpenAI (winget OpenAI.Codex)"/>
-            <CheckBox x:Name="cb_antigrav" Content="antigravity"        IsChecked="False"
-                      ToolTip="IDE agente de Google (winget Google.Antigravity)"/>
-            <CheckBox x:Name="cb_node"    Content="node.js lts"         IsChecked="False"
-                      ToolTip="Runtime para servidores MCP via npx (lo usa Claude Code Setup Guide). winget OpenJS.NodeJS.LTS"/>
-            <CheckBox x:Name="cb_multipane" Content="multi-pane  (m2 / m3 / m4)" IsChecked="True"
-                      ToolTip="Perfil oculto Vorterm Mosaic (negro, sin imagen) + comandos m2 / m3 / m4, close N y /commands.&#10;Atajos Ctrl+Shift+3 / B / Z solo si estan libres."/>
-            <CheckBox x:Name="cb_lab"     Content="lab cloudops / azure" IsChecked="False"
-                      ToolTip="Estructura de trabajo LAB con CLAUDE.md, plantillas y documentacion. Solo ficheros locales."/>
+            <TextBlock Text="APPS" Style="{StaticResource GroupLabel}"/>
+            <UniformGrid Columns="2">
+              <CheckBox x:Name="cb_vscode"  Content="vs code"        IsChecked="False" ToolTip="Visual Studio Code (winget Microsoft.VisualStudioCode)"/>
+              <CheckBox x:Name="cb_node"    Content="node.js lts"    IsChecked="False"
+                        ToolTip="Runtime para servidores MCP via npx (lo usa Claude Code Setup Guide). winget OpenJS.NodeJS.LTS"/>
+              <CheckBox x:Name="cb_neovim"  Content="neovim"         IsChecked="False"/>
+              <CheckBox x:Name="cb_7zip"    Content="7-zip"          IsChecked="False"/>
+              <CheckBox x:Name="cb_github"  Content="github desktop" IsChecked="False"/>
+              <CheckBox x:Name="cb_wsl"     Content="wsl"            IsChecked="False"
+                        ToolTip="Instala WSL2 + Ubuntu. Puede requerir reinicio."/>
+            </UniformGrid>
+            <TextBlock Text="AI AGENTS" Style="{StaticResource GroupLabel}"/>
+            <UniformGrid Columns="2">
+              <CheckBox x:Name="cb_claude"  Content="claude code"    IsChecked="False"
+                        ToolTip="CLI agente de Anthropic (winget Anthropic.ClaudeCode)"/>
+              <CheckBox x:Name="cb_codex"   Content="codex cli"      IsChecked="False"
+                        ToolTip="CLI agente de OpenAI (winget OpenAI.Codex)"/>
+              <CheckBox x:Name="cb_antigrav" Content="antigravity"   IsChecked="False"
+                        ToolTip="IDE agente de Google (winget Google.Antigravity)"/>
+            </UniformGrid>
+            <TextBlock Text="TERMINAL &amp; WORKSPACE" Style="{StaticResource GroupLabel}"/>
+            <UniformGrid Columns="2">
+              <CheckBox x:Name="cb_multipane" Content="multi-pane"   IsChecked="True"
+                        ToolTip="m2 / m3 / m4 (2, 3 o 4 paneles), close N y /commands. Perfil oculto Vorterm Mosaic (negro, sin imagen).&#10;Atajos Ctrl+Shift+3 / B / Z solo si estan libres."/>
+              <CheckBox x:Name="cb_lab"     Content="lab cloudops"   IsChecked="False"
+                        ToolTip="Estructura de trabajo LAB (Azure, M365, Intune, seguridad...) con CLAUDE.md, plantillas y documentacion. Solo ficheros locales."/>
+            </UniformGrid>
             <StackPanel x:Name="LabPanel" Visibility="Collapsed" Margin="26,2,0,6">
               <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="{StaticResource Muted}" Margin="0,0,0,8"
                          Text="Crea LAB dentro de la carpeta elegida: areas Azure, M365, Outlook, Intune, seguridad, CloudOps, PowerShell, DevOps, docs, plantillas y CLAUDE.md (menos de 1 MB). Solo ficheros locales: sin admin, sin iniciar sesion, sin conectar a Azure ni M365. Nunca sobrescribe tus ficheros."/>
@@ -2668,7 +2684,7 @@ if ($NoGui) {
           <RichTextBox x:Name="LogBox" Grid.Row="1" IsReadOnly="True" Background="Transparent"
                    BorderThickness="0"
                    FontFamily="JetBrains Mono, Cascadia Mono, Consolas"
-                   FontSize="15" Foreground="#d9d9d9"
+                   FontSize="14" Foreground="#d9d9d9"
                    VerticalScrollBarVisibility="Auto"
                    HorizontalScrollBarVisibility="Auto"
                    IsUndoEnabled="False"
@@ -2682,7 +2698,13 @@ if ($NoGui) {
           <ColumnDefinition Width="*"/>
           <ColumnDefinition Width="Auto"/>
           <ColumnDefinition Width="Auto"/>
+          <ColumnDefinition Width="Auto"/>
         </Grid.ColumnDefinitions>
+        <Button x:Name="OptionsBtn" Grid.Column="3" Content="OPTIONS"
+                Style="{StaticResource GhostButton}"
+                Padding="18,6" FontSize="12" Margin="14,0,0,0"
+                Visibility="Collapsed"
+                ToolTip="Mostrar / ocultar las opciones (la consola usa todo el espacio mientras instala)"/>
         <ProgressBar x:Name="Progress" Height="2" Minimum="0" Maximum="100"
                      VerticalAlignment="Center">
           <ProgressBar.Effect>
@@ -2761,6 +2783,7 @@ foreach ($n in 'PathBox','BrowseBtn','LogBox','Progress','StatusText','ExitBtn',
                'cb_vscode','cb_neovim','cb_7zip','cb_github','cb_wsl',
                'cb_claude','cb_codex','cb_antigrav','cb_node','cb_multipane','cb_lab',
                'SetupPanel','LabPanel','LabPathBox','LabBrowseBtn','LabTarget',
+               'StartupRow','ConfigRow','OptionsBtn',
                'cb_clean_profile','cb_clean_wt','cb_clean_modules','cb_clean_history') {
     $controls[$n] = $window.FindName($n)
 }
@@ -2905,6 +2928,21 @@ $controls.LabBrowseBtn.Add_Click({
 
 $controls.ExitBtn.Add_Click({ $window.Close() })
 
+# Mientras instala/resetea, la consola ocupa la ventana: las opciones se pliegan y
+# OPTIONS las vuelve a mostrar (o a ocultar).
+function Set-OptionsVisible {
+    param([bool]$Visible)
+    $v = if ($Visible) { [System.Windows.Visibility]::Visible } else { [System.Windows.Visibility]::Collapsed }
+    $controls.StartupRow.Visibility = $v
+    $controls.ConfigRow.Visibility  = $v
+    $controls.OptionsBtn.Content    = $(if ($Visible) { 'CONSOLE' } else { 'OPTIONS' })
+    $window.UpdateLayout()
+    Update-RootHeight
+}
+$controls.OptionsBtn.Add_Click({
+    Set-OptionsVisible ($controls.ConfigRow.Visibility -ne [System.Windows.Visibility]::Visible)
+})
+
 # ------ Sync state ------------------------------------------
 $sync = [hashtable]::Synchronized(@{
     NoGui       = $false
@@ -3013,6 +3051,8 @@ $controls.InstallBtn.Add_Click({
 
     $controls.InstallBtn.IsEnabled = $false
     $controls.ResetBtn.IsEnabled   = $false
+    $controls.OptionsBtn.Visibility = [System.Windows.Visibility]::Visible
+    Set-OptionsVisible $false
     Reset-LogDocument
     $sync.LogPara = $script:LogPara
     $controls.Progress.Value = 0
@@ -3064,6 +3104,8 @@ Continuar?
 
     $controls.InstallBtn.IsEnabled = $false
     $controls.ResetBtn.IsEnabled   = $false
+    $controls.OptionsBtn.Visibility = [System.Windows.Visibility]::Visible
+    Set-OptionsVisible $false
     Reset-LogDocument
     $sync.LogPara = $script:LogPara
     $controls.Progress.Value = 0
