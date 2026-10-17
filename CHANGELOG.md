@@ -34,6 +34,9 @@
   history option is now off by default.
 
 ### Fixed
+- PowerShell 7 and oh-my-posh not installed when winget's MSI fails (Windows Installer
+  disabled, `0x80070422`, or no admin rights): fallback to the official portable builds in
+  the user profile (SHA256 verified against the release checksums) + user PATH.
 - Red `Import-Clixml: Root element is missing` when several terminals start together
   (Terminal-Icons rewrites its XML on every import; the import is now serialized).
 - Embedded fallback theme had two missing icons; the installer is pure ASCII again.

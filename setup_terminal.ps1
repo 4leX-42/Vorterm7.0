@@ -474,7 +474,10 @@ $InstallLogic = {
                 if ($okCodes -contains $code) {
                     Write-Log ("  [OK] {0}" -f $p.Name)
                 } else {
-                    Write-Log ("  [!!] {0} (exit 0x{1:X8})" -f $p.Name, $code)
+                    $hint = ''
+                    if ($code -eq -2147023838) { $hint = ' - servicio de Windows deshabilitado (Windows Installer): se probara la version portable' }
+                    elseif (-not $isAdmin)     { $hint = ' - sin permisos de admin para un instalador de equipo: se probara la version portable si existe' }
+                    Write-Log ("  [!!] {0} (exit 0x{1:X8}){2}" -f $p.Name, $code, $hint)
                     $script:failures += $p.Name
                 }
             }
@@ -562,6 +565,99 @@ public static extern System.IntPtr SendMessageTimeout(System.IntPtr hWnd, uint M
             } catch {
                 Write-Log "  [!!] Font fallback: $($_.Exception.Message)"
                 $script:failures += 'font'
+            }
+        }
+
+        # ---- Plan B sin MSI ni admin: PowerShell 7 y oh-my-posh portables ----
+        # winget instala ambos con MSI: falla con Windows Installer deshabilitado
+        # (0x80070422, equipos endurecidos) o sin admin. Binarios oficiales en el
+        # perfil del usuario + PATH de usuario. Las rutas son las que ya buscan
+        # Find-Pwsh y el perfil, asi que el resto del instalador los encuentra.
+        function Add-UserPath {
+            param([string]$Dir)
+            $cur = [Environment]::GetEnvironmentVariable('Path', 'User')
+            if (@($cur -split ';') -notcontains $Dir) {
+                $newPath = if ($cur) { "$cur;$Dir" } else { $Dir }
+                [Environment]::SetEnvironmentVariable('Path', $newPath, 'User')
+            }
+            if (@($env:Path -split ';') -notcontains $Dir) { $env:Path += ";$Dir" }
+        }
+        $cpuArch = if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { 'arm64' } else { 'x64' }
+        $ghHeaders = @{ 'User-Agent' = 'Vorterm' }
+
+        if ($opts.Pwsh -and -not $DRY -and -not (Find-Pwsh)) {
+            Set-Status 'PowerShell 7 (portable)' 56
+            Write-Log "  [..] PowerShell 7 no quedo instalado, plan B: zip portable oficial (sin admin)..."
+            try {
+                $rel = Invoke-RestMethod -Uri 'https://api.github.com/repos/PowerShell/PowerShell/releases/latest' -Headers $ghHeaders -UseBasicParsing
+                $asset = @($rel.assets) | Where-Object { $_.name -match "^PowerShell-[\d.]+-win-$cpuArch\.zip$" } | Select-Object -First 1
+                if (-not $asset) { throw "no hay zip win-$cpuArch en $($rel.tag_name)" }
+                $pzip = Join-Path $env:TEMP "vorterm-pwsh-$PID.zip"
+                Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $pzip -UseBasicParsing
+                $hashAsset = @($rel.assets) | Where-Object { $_.name -eq 'hashes.sha256' } | Select-Object -First 1
+                $want = $null
+                if ($hashAsset) {
+                    # hashes.sha256 viene en UTF-16 con BOM: fichero + Select-String (detecta BOM)
+                    $sumFile = Join-Path $env:TEMP "vorterm-pwsh-$PID.sha256"
+                    Invoke-WebRequest -Uri $hashAsset.browser_download_url -OutFile $sumFile -UseBasicParsing
+                    $line = Select-String -LiteralPath $sumFile -Pattern $asset.name -SimpleMatch | Select-Object -First 1
+                    Remove-Item $sumFile -Force -ErrorAction SilentlyContinue
+                    if ($line) { $want = ($line.Line.Trim() -split '\s+')[0].ToUpperInvariant() }
+                }
+                if ($want) {
+                    if ($want -ne (Get-FileHash -LiteralPath $pzip -Algorithm SHA256).Hash) { Remove-Item $pzip -Force; throw "SHA256 no coincide ($($asset.name))" }
+                    Write-Log "  [OK] SHA256 verificado: $($asset.name)"
+                } else {
+                    Write-Log "  [..] sin hash publicado para $($asset.name): no verificado"
+                }
+                $pdir = Join-Path $env:LOCALAPPDATA 'Microsoft\PowerShell\7'
+                New-Item -ItemType Directory -Path $pdir -Force | Out-Null
+                Expand-Archive -Path $pzip -DestinationPath $pdir -Force
+                Remove-Item $pzip -Force -ErrorAction SilentlyContinue
+                Add-UserPath $pdir
+                $pwshExe = Find-Pwsh
+                if (-not $pwshExe) { throw "pwsh.exe no aparece en $pdir" }
+                Write-Log "  [OK] PowerShell $($rel.tag_name) portable: $pwshExe (PATH de usuario)"
+                $script:failures = @($script:failures | Where-Object { $_ -ne 'PowerShell 7' })
+            } catch {
+                Write-Log "  [!!] PowerShell 7 portable: $($_.Exception.Message)"
+            }
+        }
+
+        if ($opts.OMP -and -not $DRY -and
+            -not (Test-Optional 'oh-my-posh' @("$env:LOCALAPPDATA\Programs\oh-my-posh\bin\oh-my-posh.exe",
+                                               "$env:LOCALAPPDATA\Microsoft\WindowsApps\oh-my-posh.exe"))) {
+            Set-Status 'oh-my-posh (portable)' 57
+            Write-Log "  [..] oh-my-posh no quedo instalado, plan B: ejecutable oficial (sin admin)..."
+            try {
+                $oarch = if ($cpuArch -eq 'arm64') { 'arm64' } else { 'amd64' }
+                $oname = "posh-windows-$oarch.exe"
+                $odir  = Join-Path $env:LOCALAPPDATA 'Programs\oh-my-posh\bin'
+                $oexe  = Join-Path $odir 'oh-my-posh.exe'
+                $otmp  = Join-Path $env:TEMP "vorterm-$oname"
+                Invoke-WebRequest -Uri "https://github.com/JanDeDobbeleer/oh-my-posh/releases/latest/download/$oname" -OutFile $otmp -UseBasicParsing
+                if ((Get-Item $otmp).Length -lt 1mb) { throw 'descarga incompleta' }
+                $owant = $null
+                try {
+                    $osumFile = "$otmp.checksums.txt"
+                    Invoke-WebRequest -Uri 'https://github.com/JanDeDobbeleer/oh-my-posh/releases/latest/download/checksums.txt' -OutFile $osumFile -UseBasicParsing
+                    $oline = Select-String -LiteralPath $osumFile -Pattern $oname -SimpleMatch | Select-Object -First 1
+                    Remove-Item $osumFile -Force -ErrorAction SilentlyContinue
+                    if ($oline) { $owant = ($oline.Line.Trim() -split '\s+')[0].ToUpperInvariant() }
+                } catch {}
+                if ($owant -match '^[0-9A-F]{64}$') {
+                    if ($owant -ne (Get-FileHash -LiteralPath $otmp -Algorithm SHA256).Hash) { Remove-Item $otmp -Force; throw "SHA256 no coincide ($oname)" }
+                    Write-Log "  [OK] SHA256 verificado: $oname"
+                } else {
+                    Write-Log "  [..] sin hash publicado para ${oname}: no verificado"
+                }
+                New-Item -ItemType Directory -Path $odir -Force | Out-Null
+                Move-Item -LiteralPath $otmp -Destination $oexe -Force
+                Add-UserPath $odir
+                Write-Log "  [OK] oh-my-posh portable: $oexe (PATH de usuario)"
+                $script:failures = @($script:failures | Where-Object { $_ -ne 'oh-my-posh' })
+            } catch {
+                Write-Log "  [!!] oh-my-posh portable: $($_.Exception.Message)"
             }
         }
 
@@ -1274,6 +1370,12 @@ if (-not `$global:__VortermStarted) {
                 $ps7Guid    = '{574e775e-4f2a-5b96-ac1e-a2962a402336}'
                 $ps5Guid    = '{61c54bbd-c2c6-5271-96e7-009a87ff44bf}'
                 $mosaicGuid = '{7628d9b6-6917-4040-b9a2-986f96f1361d}'
+                # PowerShell portable (plan B) vive en el perfil del usuario: ruta completa
+                # para no depender de que Windows Terminal ya vea el PATH de usuario nuevo.
+                $pwshCmd = 'pwsh.exe -NoLogo -NoProfileLoadTime'
+                if ($pwshExe -and $pwshExe -like "$env:LOCALAPPDATA\Microsoft\PowerShell\7\*") {
+                    $pwshCmd = "`"$pwshExe`" -NoLogo -NoProfileLoadTime"
+                }
 
                 # WT settings.json es JSONC: comentarios // /* */ Y comas finales.
                 # ConvertFrom-Json (PS5.1) revienta con ambos. Limpiar los dos
@@ -1372,7 +1474,7 @@ if (-not `$global:__VortermStarted) {
                                           (($prof.name -match '^(?i)PowerShell(\s*7(\.\d+)?)?$') -and
                                            ($prof.commandline -match '(?i)^\s*"?[^"]*pwsh(\.exe)?"?(\s|$)'))
                                 if ($isPwsh) {
-                                    Set-Prop $prof 'commandline' 'pwsh.exe -NoLogo -NoProfileLoadTime'
+                                    Set-Prop $prof 'commandline' $pwshCmd
                                     Set-Prop $prof 'startingDirectory' $opts.WorkDir
                                     if ($opts.Elevate) {
                                         Set-Prop $prof 'elevate' $true
@@ -1420,7 +1522,7 @@ if (-not `$global:__VortermStarted) {
                             $newProf = [pscustomobject]@{
                                 guid              = $ps7Guid
                                 name              = 'PowerShell'
-                                commandline       = 'pwsh.exe -NoLogo -NoProfileLoadTime'
+                                commandline       = $pwshCmd
                                 startingDirectory = $opts.WorkDir
                                 hidden            = $false
                                 cursorShape       = 'bar'
@@ -1456,7 +1558,7 @@ if (-not `$global:__VortermStarted) {
                                 $json.profiles.list = @($json.profiles.list) + @($mosaic)
                                 Write-Log "  [OK] WT profile added: Vorterm Mosaic (oculto, lo usan m2/m3/m4)"
                             }
-                            $mpCmd = if ($pwshExe) { 'pwsh.exe -NoLogo -NoProfileLoadTime' } else { 'powershell.exe -NoLogo' }
+                            $mpCmd = if ($pwshExe) { $pwshCmd } else { 'powershell.exe -NoLogo' }
                             Set-Prop $mosaic 'commandline' $mpCmd
                             Set-Prop $mosaic 'hidden' $true
                             Set-Prop $mosaic 'background' '#000000'
