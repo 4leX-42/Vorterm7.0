@@ -13,6 +13,16 @@ The LAB option needs none of the above: it only writes files.
 
 ## New machine
 
+Fastest: one PowerShell command. `bootstrap.ps1` downloads the latest `main` to
+`%LOCALAPPDATA%\Vorterm\app` and opens the window (the execution policy change only applies
+to that PowerShell process):
+
+```powershell
+Set-ExecutionPolicy -Scope Process Bypass -Force; [Net.ServicePointManager]::SecurityProtocol=3072; $f="$env:TEMP\vorterm-bootstrap.ps1"; irm https://raw.githubusercontent.com/4leX-42/Vorterm7.0/main/bootstrap.ps1 -OutFile $f; & $f
+```
+
+Manual alternative:
+
 1. Download the repository (zip or `git clone`) and keep the folder structure: the
    installer needs `Mainthema.json` and the `lab\` folder next to it.
 2. Double-click `INSTALAR.bat`.
