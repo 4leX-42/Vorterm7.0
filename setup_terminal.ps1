@@ -1816,16 +1816,24 @@ if (-not `$global:__VortermStarted) {
                 $sync.InstallBtn.IsEnabled = $true
                 $sync.ResetBtn.IsEnabled   = $true
                 $sync.PauseBtn.Visibility  = [System.Windows.Visibility]::Collapsed
+                # Final: barra al 100 % en verde neon (ok), ambar (avisos) o rojo (error) + aviso.
                 if ($script:failures -contains 'fatal') {
-                    $sync.StatusText.Text = 'Error'
-                    $sync.StatusText.Foreground = [Windows.Media.Brushes]::OrangeRed
+                    $sync.StatusText.Text = 'Error'; $hex = '#ff2b4a'; $icon = 'Error'
+                    $msg = "La instalacion se ha detenido por un error.`n`nRevisa la consola o el log:`n$($opts.LogFile)"
                 } elseif ($script:failures.Count) {
-                    $sync.StatusText.Text = 'Warnings'
-                    $sync.StatusText.Foreground = [Windows.Media.Brushes]::Goldenrod
+                    $sync.StatusText.Text = 'Finished with warnings'; $hex = '#ffb000'; $icon = 'Warning'
+                    $msg = "Instalacion terminada con avisos:`n$($script:failures -join ', ')`n`nDetalle en la consola o en el log:`n$($opts.LogFile)"
                 } else {
-                    $sync.StatusText.Text = $(if ($opts.DryRun) { 'Dry run OK' } else { 'Ready' })
-                    $sync.StatusText.Foreground = [Windows.Media.Brushes]::LightGreen
+                    $sync.StatusText.Text = $(if ($opts.DryRun) { 'Dry run OK' } else { 'Finished' }); $hex = '#39ff14'; $icon = 'Information'
+                    $msg = $(if ($opts.DryRun) { 'Simulacion completada. No se ha cambiado nada.' } else { "Instalacion completada.`n`nCierra y vuelve a abrir Windows Terminal para ver la fuente y el tema." })
+                    if ($opts.Lab -and -not $opts.DryRun) { $msg += "`n`nLAB: $(Join-Path $opts.LabRoot 'LAB')" }
                 }
+                $brush = [System.Windows.Media.BrushConverter]::new().ConvertFrom($hex)
+                $sync.Progress.Value = 100
+                $sync.Progress.Foreground = $brush
+                try { $sync.Progress.Effect.Color = [System.Windows.Media.ColorConverter]::ConvertFromString($hex) } catch {}
+                $sync.StatusText.Foreground = $brush
+                [System.Windows.MessageBox]::Show($sync.Window, $msg, 'Vorterm', 'OK', $icon) | Out-Null
             })
         }
     }
@@ -2227,15 +2235,21 @@ $ResetLogic = {
                 $sync.InstallBtn.IsEnabled = $true
                 $sync.ResetBtn.IsEnabled   = $true
                 if ($failures -contains 'fatal') {
-                    $sync.StatusText.Text = 'Error'
-                    $sync.StatusText.Foreground = [Windows.Media.Brushes]::OrangeRed
+                    $sync.StatusText.Text = 'Error'; $hex = '#ff2b4a'; $icon = 'Error'
+                    $msg = 'El reset se ha detenido por un error. Revisa la consola.'
                 } elseif ($failures.Count) {
-                    $sync.StatusText.Text = 'Warnings'
-                    $sync.StatusText.Foreground = [Windows.Media.Brushes]::Goldenrod
+                    $sync.StatusText.Text = 'Reset with warnings'; $hex = '#ffb000'; $icon = 'Warning'
+                    $msg = "Reset terminado con avisos:`n$($failures -join ', ')"
                 } else {
-                    $sync.StatusText.Text = $(if ($opts.DryRun) { 'Dry run OK' } else { 'Reset done' })
-                    $sync.StatusText.Foreground = [Windows.Media.Brushes]::LightGreen
+                    $sync.StatusText.Text = $(if ($opts.DryRun) { 'Dry run OK' } else { 'Reset done' }); $hex = '#39ff14'; $icon = 'Information'
+                    $msg = 'Reset completado. Abre una terminal nueva para ver el estado limpio.'
                 }
+                $brush = [System.Windows.Media.BrushConverter]::new().ConvertFrom($hex)
+                $sync.Progress.Value = 100
+                $sync.Progress.Foreground = $brush
+                try { $sync.Progress.Effect.Color = [System.Windows.Media.ColorConverter]::ConvertFromString($hex) } catch {}
+                $sync.StatusText.Foreground = $brush
+                [System.Windows.MessageBox]::Show($sync.Window, $msg, 'Vorterm', 'OK', $icon) | Out-Null
             })
         }
     }
@@ -3158,6 +3172,8 @@ $controls.InstallBtn.Add_Click({
     Reset-LogDocument
     $sync.LogPara = $script:LogPara
     $controls.Progress.Value = 0
+    $controls.Progress.Foreground = $window.FindResource('Gold')
+    try { $controls.Progress.Effect.Color = [System.Windows.Media.ColorConverter]::ConvertFromString('#fcee0a') } catch {}
     $controls.StatusText.Text = 'Running'
     $controls.StatusText.Foreground = [Windows.Media.Brushes]::Gold
 
@@ -3211,6 +3227,8 @@ Continuar?
     Reset-LogDocument
     $sync.LogPara = $script:LogPara
     $controls.Progress.Value = 0
+    $controls.Progress.Foreground = $window.FindResource('Gold')
+    try { $controls.Progress.Effect.Color = [System.Windows.Media.ColorConverter]::ConvertFromString('#fcee0a') } catch {}
     $controls.StatusText.Text = 'Resetting'
     $controls.StatusText.Foreground = [Windows.Media.Brushes]::Gold
 
