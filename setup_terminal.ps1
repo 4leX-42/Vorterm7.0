@@ -1873,11 +1873,11 @@ if (-not `$global:__VortermStarted) {
                 $sync.PauseBtn.Visibility  = [System.Windows.Visibility]::Collapsed
                 # Final: barra al 100 % en verde neon (ok), ambar (avisos) o rojo (error) + aviso.
                 if ($script:failures -contains 'fatal') {
-                    $sync.StatusText.Text = 'Error'; $hex = '#ff2b4a'
+                    $sync.StatusText.Text = 'Error'; $hex = '#ff1a1a'
                     $title = 'OPERATION FAILED'
                     $body  = "Stopped by an error.`nLog: $($opts.LogFile)"
                 } elseif ($script:failures.Count) {
-                    $sync.StatusText.Text = 'Finished with warnings'; $hex = '#ffb000'
+                    $sync.StatusText.Text = 'Finished with warnings'; $hex = '#ff9f1a'
                     $title = 'COMPLETE // WARNINGS'
                     $body  = "Warnings: $($script:failures -join ', ')`nLog: $($opts.LogFile)"
                 } else {
@@ -1898,6 +1898,14 @@ if (-not `$global:__VortermStarted) {
                     $dlg.Owner = $sync.Window
                     $dlg.FindName('FinTitle').Text = $title
                     $dlg.FindName('FinBody').Text  = $body
+                    # Acento segun resultado: verde (ok), naranja (avisos), rojo (error)
+                    $accC = [System.Windows.Media.ColorConverter]::ConvertFromString($hex)
+                    $accB = New-Object System.Windows.Media.SolidColorBrush $accC
+                    $dlg.FindName('FinTitle').Foreground = $accB
+                    try { $dlg.FindName('FinTitle').Effect.Color = $accC } catch {}
+                    $dlg.FindName('FinBorder').BorderBrush = $accB
+                    $dlg.FindName('FinOk').Foreground  = $accB
+                    $dlg.FindName('FinOk').BorderBrush = $accB
                     [void]$dlg.ShowDialog()
                 } catch {}
             })
@@ -2301,10 +2309,10 @@ $ResetLogic = {
                 $sync.InstallBtn.IsEnabled = $true
                 $sync.ResetBtn.IsEnabled   = $true
                 if ($failures -contains 'fatal') {
-                    $sync.StatusText.Text = 'Error'; $hex = '#ff2b4a'
+                    $sync.StatusText.Text = 'Error'; $hex = '#ff1a1a'
                     $title = 'RESET FAILED'; $body = 'Stopped by an error. Check the console.'
                 } elseif ($failures.Count) {
-                    $sync.StatusText.Text = 'Reset with warnings'; $hex = '#ffb000'
+                    $sync.StatusText.Text = 'Reset with warnings'; $hex = '#ff9f1a'
                     $title = 'RESET // WARNINGS'; $body = "Warnings: $($failures -join ', ')"
                 } else {
                     $sync.StatusText.Text = $(if ($opts.DryRun) { 'Dry run OK' } else { 'Reset done' }); $hex = '#39ff14'
@@ -2320,6 +2328,14 @@ $ResetLogic = {
                     $dlg.Owner = $sync.Window
                     $dlg.FindName('FinTitle').Text = $title
                     $dlg.FindName('FinBody').Text  = $body
+                    # Acento segun resultado: verde (ok), naranja (avisos), rojo (error)
+                    $accC = [System.Windows.Media.ColorConverter]::ConvertFromString($hex)
+                    $accB = New-Object System.Windows.Media.SolidColorBrush $accC
+                    $dlg.FindName('FinTitle').Foreground = $accB
+                    try { $dlg.FindName('FinTitle').Effect.Color = $accC } catch {}
+                    $dlg.FindName('FinBorder').BorderBrush = $accB
+                    $dlg.FindName('FinOk').Foreground  = $accB
+                    $dlg.FindName('FinOk').BorderBrush = $accB
                     [void]$dlg.ShowDialog()
                 } catch {}
             })
@@ -3138,7 +3154,7 @@ $finishXaml = @'
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         WindowStyle="None" ResizeMode="NoResize" SizeToContent="Height" Width="560"
         WindowStartupLocation="CenterOwner" Background="#050506" ShowInTaskbar="False" Topmost="True">
-  <Border BorderBrush="#e10024" BorderThickness="1" Padding="34,26,34,24">
+  <Border x:Name="FinBorder" BorderBrush="#e10024" BorderThickness="1" Padding="34,26,34,24">
     <StackPanel>
       <TextBlock Text="VORTERM // SYSTEM" Foreground="#6a6c70" FontSize="11"
                  FontFamily="JetBrains Mono, Cascadia Mono, Consolas"/>
@@ -3148,7 +3164,7 @@ $finishXaml = @'
           <DropShadowEffect Color="#ff1a1a" BlurRadius="20" ShadowDepth="0" Opacity="0.9"/>
         </TextBlock.Effect>
       </TextBlock>
-      <Border Height="1" Background="#3a0008" Margin="0,16,0,14"/>
+      <Border Height="1" Background="#2a2b2f" Margin="0,16,0,14"/>
       <TextBlock x:Name="FinBody" Foreground="#bdbdbd" FontSize="13" TextWrapping="Wrap"
                  FontFamily="JetBrains Mono, Cascadia Mono, Consolas"/>
       <Button x:Name="FinOk" Content="OK" IsCancel="True" IsDefault="True" HorizontalAlignment="Right"
