@@ -1857,22 +1857,33 @@ if (-not `$global:__VortermStarted) {
                 $sync.PauseBtn.Visibility  = [System.Windows.Visibility]::Collapsed
                 # Final: barra al 100 % en verde neon (ok), ambar (avisos) o rojo (error) + aviso.
                 if ($script:failures -contains 'fatal') {
-                    $sync.StatusText.Text = 'Error'; $hex = '#ff2b4a'; $icon = 'Error'
-                    $msg = "La instalacion se ha detenido por un error.`n`nRevisa la consola o el log:`n$($opts.LogFile)"
+                    $sync.StatusText.Text = 'Error'; $hex = '#ff2b4a'
+                    $title = 'OPERATION FAILED'
+                    $body  = "Stopped by an error.`nLog: $($opts.LogFile)"
                 } elseif ($script:failures.Count) {
-                    $sync.StatusText.Text = 'Finished with warnings'; $hex = '#ffb000'; $icon = 'Warning'
-                    $msg = "Instalacion terminada con avisos:`n$($script:failures -join ', ')`n`nDetalle en la consola o en el log:`n$($opts.LogFile)"
+                    $sync.StatusText.Text = 'Finished with warnings'; $hex = '#ffb000'
+                    $title = 'COMPLETE // WARNINGS'
+                    $body  = "Warnings: $($script:failures -join ', ')`nLog: $($opts.LogFile)"
                 } else {
-                    $sync.StatusText.Text = $(if ($opts.DryRun) { 'Dry run OK' } else { 'Finished' }); $hex = '#39ff14'; $icon = 'Information'
-                    $msg = $(if ($opts.DryRun) { 'Simulacion completada. No se ha cambiado nada.' } else { "Instalacion completada.`n`nCierra y vuelve a abrir Windows Terminal para ver la fuente y el tema." })
-                    if ($opts.Lab -and -not $opts.DryRun) { $msg += "`n`nLAB: $(Join-Path $opts.LabRoot 'LAB')" }
+                    $sync.StatusText.Text = $(if ($opts.DryRun) { 'Dry run OK' } else { 'Finished' }); $hex = '#39ff14'
+                    $title = $(if ($opts.DryRun) { 'DRY RUN COMPLETE' } else { 'OPERATION COMPLETE' })
+                    $body  = $(if ($opts.DryRun) { 'Nothing was changed.' } else { 'All systems online. Restart Windows Terminal to load the font and theme.' })
+                    if ($opts.Lab -and -not $opts.DryRun) { $body += "`nLab: $(Join-Path $opts.LabRoot 'LAB')" }
                 }
                 $brush = [System.Windows.Media.BrushConverter]::new().ConvertFrom($hex)
                 $sync.Progress.Value = 100
                 $sync.Progress.Foreground = $brush
                 try { $sync.Progress.Effect.Color = [System.Windows.Media.ColorConverter]::ConvertFromString($hex) } catch {}
                 $sync.StatusText.Foreground = $brush
-                [System.Windows.MessageBox]::Show($sync.Window, $msg, 'Vorterm', 'OK', $icon) | Out-Null
+                # Ventana propia (XAML en $sync.FinishXaml). Sin handlers de PowerShell: el
+                # boton cierra con IsCancel, asi no hay bloqueo entre este hilo y el de la GUI.
+                try {
+                    $dlg = [Windows.Markup.XamlReader]::Load((New-Object System.Xml.XmlNodeReader ([xml]$sync.FinishXaml)))
+                    $dlg.Owner = $sync.Window
+                    $dlg.FindName('FinTitle').Text = $title
+                    $dlg.FindName('FinBody').Text  = $body
+                    [void]$dlg.ShowDialog()
+                } catch {}
             })
         }
     }
@@ -2274,21 +2285,27 @@ $ResetLogic = {
                 $sync.InstallBtn.IsEnabled = $true
                 $sync.ResetBtn.IsEnabled   = $true
                 if ($failures -contains 'fatal') {
-                    $sync.StatusText.Text = 'Error'; $hex = '#ff2b4a'; $icon = 'Error'
-                    $msg = 'El reset se ha detenido por un error. Revisa la consola.'
+                    $sync.StatusText.Text = 'Error'; $hex = '#ff2b4a'
+                    $title = 'RESET FAILED'; $body = 'Stopped by an error. Check the console.'
                 } elseif ($failures.Count) {
-                    $sync.StatusText.Text = 'Reset with warnings'; $hex = '#ffb000'; $icon = 'Warning'
-                    $msg = "Reset terminado con avisos:`n$($failures -join ', ')"
+                    $sync.StatusText.Text = 'Reset with warnings'; $hex = '#ffb000'
+                    $title = 'RESET // WARNINGS'; $body = "Warnings: $($failures -join ', ')"
                 } else {
-                    $sync.StatusText.Text = $(if ($opts.DryRun) { 'Dry run OK' } else { 'Reset done' }); $hex = '#39ff14'; $icon = 'Information'
-                    $msg = 'Reset completado. Abre una terminal nueva para ver el estado limpio.'
+                    $sync.StatusText.Text = $(if ($opts.DryRun) { 'Dry run OK' } else { 'Reset done' }); $hex = '#39ff14'
+                    $title = 'RESET COMPLETE'; $body = 'Open a new terminal to see the clean state.'
                 }
                 $brush = [System.Windows.Media.BrushConverter]::new().ConvertFrom($hex)
                 $sync.Progress.Value = 100
                 $sync.Progress.Foreground = $brush
                 try { $sync.Progress.Effect.Color = [System.Windows.Media.ColorConverter]::ConvertFromString($hex) } catch {}
                 $sync.StatusText.Foreground = $brush
-                [System.Windows.MessageBox]::Show($sync.Window, $msg, 'Vorterm', 'OK', $icon) | Out-Null
+                try {
+                    $dlg = [Windows.Markup.XamlReader]::Load((New-Object System.Xml.XmlNodeReader ([xml]$sync.FinishXaml)))
+                    $dlg.Owner = $sync.Window
+                    $dlg.FindName('FinTitle').Text = $title
+                    $dlg.FindName('FinBody').Text  = $body
+                    [void]$dlg.ShowDialog()
+                } catch {}
             })
         }
     }
@@ -3098,8 +3115,51 @@ $controls.OptionsBtn.Add_Click({
     Set-OptionsVisible ($controls.ConfigRow.Visibility -ne [System.Windows.Visibility]::Visible)
 })
 
+# ------ Finish dialog (negro / rojo, estilo terminal) ----------
+# Se pasa como texto al runspace; el boton cierra via IsCancel (sin codigo).
+$finishXaml = @'
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        WindowStyle="None" ResizeMode="NoResize" SizeToContent="Height" Width="560"
+        WindowStartupLocation="CenterOwner" Background="#050506" ShowInTaskbar="False" Topmost="True">
+  <Border BorderBrush="#e10024" BorderThickness="1" Padding="34,26,34,24">
+    <StackPanel>
+      <TextBlock Text="VORTERM // SYSTEM" Foreground="#6a6c70" FontSize="11"
+                 FontFamily="JetBrains Mono, Cascadia Mono, Consolas"/>
+      <TextBlock x:Name="FinTitle" Text="OPERATION COMPLETE" Foreground="#ff1a1a" FontSize="27" FontWeight="Bold"
+                 FontFamily="JetBrains Mono, Cascadia Mono, Consolas" Margin="0,14,0,0">
+        <TextBlock.Effect>
+          <DropShadowEffect Color="#ff1a1a" BlurRadius="20" ShadowDepth="0" Opacity="0.9"/>
+        </TextBlock.Effect>
+      </TextBlock>
+      <Border Height="1" Background="#3a0008" Margin="0,16,0,14"/>
+      <TextBlock x:Name="FinBody" Foreground="#bdbdbd" FontSize="13" TextWrapping="Wrap"
+                 FontFamily="JetBrains Mono, Cascadia Mono, Consolas"/>
+      <Button x:Name="FinOk" Content="OK" IsCancel="True" IsDefault="True" HorizontalAlignment="Right"
+              Margin="0,22,0,0" Padding="28,7" Foreground="#ff1a1a" Background="Transparent" BorderBrush="#e10024"
+              FontFamily="JetBrains Mono, Cascadia Mono, Consolas" FontSize="13" Cursor="Hand">
+        <Button.Template>
+          <ControlTemplate TargetType="Button">
+            <Border x:Name="b" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                    BorderThickness="1" Padding="{TemplateBinding Padding}">
+              <ContentPresenter HorizontalAlignment="Center"/>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="b" Property="Background" Value="#2a0006"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Button.Template>
+      </Button>
+    </StackPanel>
+  </Border>
+</Window>
+'@
+
 # ------ Sync state ------------------------------------------
 $sync = [hashtable]::Synchronized(@{
+    FinishXaml  = $finishXaml
     NoGui       = $false
     Window      = $window
     LogBox      = $controls.LogBox
