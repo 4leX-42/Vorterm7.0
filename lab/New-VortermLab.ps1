@@ -98,8 +98,13 @@ function Get-RelativeDestination {
 }
 
 function Get-Sha256 {
+    # .NET directly: Get-FileHash lives in a module that is missing when Windows PowerShell
+    # inherits a PowerShell 7 PSModulePath.
     param([string]$Path)
-    return (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash
+    $sha = [Security.Cryptography.SHA256]::Create()
+    $fs = [IO.File]::OpenRead($Path)
+    try { return ([BitConverter]::ToString($sha.ComputeHash($fs))).Replace('-', '') }
+    finally { $fs.Dispose(); $sha.Dispose() }
 }
 
 function Test-WriteAccess {

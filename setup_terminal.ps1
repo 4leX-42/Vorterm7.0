@@ -31,6 +31,22 @@ param(
 
 $script:VortermVersion = '7.2'
 
+# ------ PSModulePath de Windows PowerShell ---------------------
+# Lanzado desde pwsh 7 (comando de una linea pegado en pwsh) o con un PSModulePath de
+# usuario que apunta a PowerShell 7, powershell.exe 5.1 no encuentra sus modulos de
+# serie (Get-FileHash, Get-PackageProvider...). Se rehace con las rutas de 5.1.
+if ($PSVersionTable.PSVersion.Major -le 5) {
+    $docs51 = try { [Environment]::GetFolderPath('MyDocuments') } catch { $null }
+    if (-not $docs51) { $docs51 = Join-Path $env:USERPROFILE 'Documents' }
+    $mp51 = @((Join-Path $docs51 'WindowsPowerShell\Modules'),
+              (Join-Path $env:ProgramFiles 'WindowsPowerShell\Modules'),
+              (Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\Modules'))
+    $machineMp = [Environment]::GetEnvironmentVariable('PSModulePath', 'Machine')
+    if ($machineMp) { $mp51 += @($machineMp -split ';' | Where-Object { $_ -and $_ -notmatch '\\PowerShell\\[67]' }) }
+    $env:PSModulePath = (@($mp51 | ForEach-Object { [Environment]::ExpandEnvironmentVariables($_).TrimEnd('\') }) |
+                         Select-Object -Unique) -join ';'
+}
+
 # ------ Elevacion automatica ----------------------------------
 # Instaladores de equipo (MSI de PowerShell 7, oh-my-posh, WSL...) necesitan admin.
 # Solo se relanza elevado si ESTA cuenta es administradora (token dividido por UAC):
