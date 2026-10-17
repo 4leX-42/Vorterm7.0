@@ -1,18 +1,34 @@
 # =============================================================
-#  Vorterm 7.1  (WPF GUI)
+#  Vorterm 7.2  (WPF GUI)
 #  Run via INSTALAR.bat (powershell.exe -STA -WindowStyle Hidden)
 #
-#  CLI (sin GUI, para pruebas):
-#    powershell -STA -File setup_terminal.ps1 -NoGui -DryRun
-#    -NoGui  : ejecuta en consola, sin ventana
-#    -DryRun : simula todo, no toca NADA del sistema
+#  CLI (sin GUI, desatendido / pruebas):
+#    powershell -STA -File setup_terminal.ps1 -NoGui [-DryRun]
+#    -NoGui        : ejecuta en consola, sin ventana (exit 0 = ok, 1 = avisos)
+#    -DryRun       : simula todo, no toca NADA del sistema
+#    -WorkDir      : directorio inicial de las pestanas (def. Documents)
+#    -LabRoot <p>  : crea el LAB CloudOps en <p>\LAB (opcional)
+#    -LabAdopt     : usa una carpeta LAB existente no creada por Vorterm
+#    -Node / -ClaudeCode / -VSCode : componentes opcionales
+#    -NoMultiPane  : sin m2/m3/m4 ni perfil Mosaic
+#    -Reset        : deshace la configuracion Vorterm (perfiles, modulos, WT)
 # =============================================================
 
 [CmdletBinding()]
 param(
     [switch]$NoGui,
-    [switch]$DryRun
+    [switch]$DryRun,
+    [string]$WorkDir,
+    [string]$LabRoot,
+    [switch]$LabAdopt,
+    [switch]$Node,
+    [switch]$ClaudeCode,
+    [switch]$VSCode,
+    [switch]$NoMultiPane,
+    [switch]$Reset
 )
+
+$script:VortermVersion = '7.2'
 
 $ErrorActionPreference = 'Stop'
 $ProgressPreference    = 'SilentlyContinue'
@@ -65,7 +81,7 @@ $script:ThemeJson = @'
         {
           "foreground": "#FFFFFF",
           "style": "plain",
-          "template": "┏[]",
+          "template": "\u250F[\uF17C]",
           "type": "text"
         },
         {
@@ -81,7 +97,7 @@ $script:ThemeJson = @'
         {
           "foreground": "#FFA500",
           "style": "plain",
-          "template": "<#FFFFFF>[</> {{ .UserName }}<#FFFFFF>]</>",
+          "template": "<#FFFFFF>[</>\uF007 {{ .UserName }}<#FFFFFF>]</>",
           "type": "session"
         },
         {
@@ -106,7 +122,7 @@ $script:ThemeJson = @'
         {
           "foreground": "#FFFFFF",
           "style": "plain",
-          "template": "┖>",
+          "template": "\u2516>",
           "type": "text"
         }
       ],
@@ -126,6 +142,9 @@ $InstallLogic = {
 
     function Write-Log {
         param([string]$Msg)
+        if ($opts.LogFile) {
+            try { [IO.File]::AppendAllText($opts.LogFile, $Msg + [Environment]::NewLine) } catch {}
+        }
         if ($sync.NoGui) { Write-Host $Msg; return }
         $sync.Window.Dispatcher.Invoke([action]{
             $color = '#d9d9d9'
@@ -150,15 +169,39 @@ $InstallLogic = {
         })
     }
 
+    # Igual que en el runspace de la GUI: 'Continue'. Con 'Stop' (modo -NoGui hereda
+    # el del script) cualquier linea de stderr de un exe (pwsh, winget) se convertia
+    # en error fatal en PowerShell 5.1.
+    $ErrorActionPreference = 'Continue'
     $started = Get-Date
     $script:failures = @()
     $DRY = [bool]$opts.DryRun
 
+    # Backups propios de Vorterm: una copia "original" la primera vez que se toca un
+    # fichero (lo que Reset restaura) + copias rotativas .vorterm-bak-* (max 5). Nunca
+    # se tocan los .bak-* que haya creado el usuario.
+    function Backup-VortermFile {
+        param([string]$Path)
+        if (-not (Test-Path -LiteralPath $Path)) { return }
+        $orig = "$Path.vorterm-original"
+        if (-not (Test-Path -LiteralPath $orig)) {
+            Copy-Item -LiteralPath $Path -Destination $orig -Force
+            Write-Log "  [..] original guardado: $orig"
+        }
+        $bk = "$Path.vorterm-bak-$(Get-Date -Format yyyyMMddHHmmss)"
+        Copy-Item -LiteralPath $Path -Destination $bk -Force
+        $leaf = Split-Path $Path -Leaf
+        Get-ChildItem -LiteralPath (Split-Path $Path -Parent) -Filter "$leaf.vorterm-bak-*" -File -ErrorAction SilentlyContinue |
+            Sort-Object Name -Descending | Select-Object -Skip 5 |
+            ForEach-Object { Remove-Item -LiteralPath $_.FullName -Force -ErrorAction SilentlyContinue }
+    }
+
     try {
 
         Write-Log "============================================================"
-        Write-Log "  Vorterm install  $($started.ToString('yyyy-MM-dd HH:mm:ss'))"
+        Write-Log "  Vorterm $($opts.Version) install  $($started.ToString('yyyy-MM-dd HH:mm:ss'))"
         Write-Log "  Startup dir: $($opts.WorkDir)"
+        if ($opts.LogFile) { Write-Log "  Log file:    $($opts.LogFile)" }
         if ($DRY) {
         Write-Log "  MODO DRY RUN - simulacion, no se modifica NADA"
         }
@@ -207,17 +250,28 @@ $InstallLogic = {
         if ($opts.Policy) {
             Set-Status 'Policy' 8
             try {
-                $eff = Get-ExecutionPolicy
-                if ($eff -in @('Restricted','AllSigned','Undefined')) {
+                # INSTALAR.bat lanza con -ExecutionPolicy Bypass (scope Process), asi que
+                # Get-ExecutionPolicy sin scope siempre dice Bypass. Lo que vera una
+                # terminal nueva es la combinacion CurrentUser/LocalMachine (+ GPO).
+                $gpo = @('MachinePolicy','UserPolicy') | ForEach-Object { Get-ExecutionPolicy -Scope $_ } |
+                       Where-Object { $_ -ne 'Undefined' } | Select-Object -First 1
+                $eff = Get-ExecutionPolicy -Scope CurrentUser
+                if ($eff -eq 'Undefined') { $eff = Get-ExecutionPolicy -Scope LocalMachine }
+                if ($gpo) {
+                    Write-Log "  [..] policy fijada por GPO: $gpo (no se cambia)"
+                } elseif ($eff -in @('Restricted','AllSigned','Undefined')) {
                     if ($DRY) {
                         Write-Log "  [DRY] policy CurrentUser -> RemoteSigned (actual: $eff)"
                     } else {
-                        try {
-                            Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned -Force
+                        # Con Bypass en el scope Process (INSTALAR.bat) PowerShell guarda el
+                        # valor pero lanza "overridden by a policy defined at a more specific
+                        # scope": lo que cuenta es releer CurrentUser despues.
+                        try { Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned -Force -ErrorAction Stop } catch {}
+                        if ((Get-ExecutionPolicy -Scope CurrentUser) -eq 'RemoteSigned') {
                             Write-Log "  [OK] policy CurrentUser -> RemoteSigned"
-                        } catch {
-                            Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force
-                            Write-Log "  [!!] GPO blocked. Process scope -> Bypass"
+                        } else {
+                            Write-Log "  [!!] no se pudo fijar CurrentUser -> RemoteSigned (directiva del equipo?)"
+                            $script:failures += 'policy'
                         }
                     }
                 } else {
@@ -341,6 +395,12 @@ $InstallLogic = {
             if (Test-Optional 'antigravity' @("$env:LOCALAPPDATA\Programs\Antigravity\Antigravity.exe")) {
                 Write-Log "  [OK] Antigravity already installed"
             } else { $pkgs += @{ Id='Google.Antigravity'; Name='Antigravity' } }
+        }
+        if ($opts.Node) {
+            # Node.js: lo necesitan los servidores MCP via npx (Claude Code Setup Guide)
+            if (Test-Optional 'node' @("$env:ProgramFiles\nodejs\node.exe")) {
+                Write-Log "  [OK] Node.js already installed"
+            } else { $pkgs += @{ Id='OpenJS.NodeJS.LTS'; Name='Node.js LTS' } }
         }
 
         if ($hasWinget -and $pkgs.Count -gt 0 -and $DRY) {
@@ -546,14 +606,46 @@ public static extern System.IntPtr SendMessageTimeout(System.IntPtr hWnd, uint M
 
         # Save-Module to PS7 path explicitly. Install-Module under PS5.1 host
         # would land in Documents\WindowsPowerShell\Modules which PS7 ignores.
+        # La ruta de usuario la dice el propio pwsh (OneDrive Known Folder Move).
+        $ps7Mod = $null
+        if ($pwshExe) {
+            try {
+                $ps7Mod = (& $pwshExe -NoProfile -NonInteractive -Command '($env:PSModulePath -split [IO.Path]::PathSeparator)[0]' 2>$null |
+                           Select-Object -First 1).Trim()
+            } catch {}
+        }
+        if (-not $ps7Mod) {
+            $docsDir = try { [Environment]::GetFolderPath('MyDocuments') } catch { $null }
+            if (-not $docsDir) { $docsDir = Join-Path $env:USERPROFILE 'Documents' }
+            $ps7Mod = Join-Path $docsDir 'PowerShell\Modules'
+        }
+
+        function Get-PwshModuleVersion {
+            param([string]$Name)
+            if (-not $pwshExe) { return $null }
+            try {
+                $v = & $pwshExe -NoProfile -NonInteractive -Command "(Get-Module -ListAvailable -Name '$Name' | Sort-Object Version -Descending | Select-Object -First 1).Version.ToString()" 2>$null |
+                     Select-Object -First 1
+                if ($v) { return [version]($v.Trim()) }
+            } catch {}
+            return $null
+        }
+
+        # $Version = version minima. Si pwsh ya ve una igual o mayor (p.ej. la
+        # PSReadLine 2.4.x que trae PowerShell 7.5+) no se instala nada: nunca se
+        # degrada un modulo.
         function Install-PSMod {
             param([string]$Name, [string]$Version)
-            $ps7Mod = Join-Path $env:USERPROFILE 'Documents\PowerShell\Modules'
 
             try {
+                $have = Get-PwshModuleVersion $Name
+                if ($have -and (-not $Version -or $have -ge [version]$Version)) {
+                    Write-Log "  [OK] $Name $have already present"
+                    return
+                }
                 $modDir = Join-Path $ps7Mod $Name
                 $hasManifest = $false
-                if (Test-Path $modDir) {
+                if (-not $pwshExe -and (Test-Path $modDir)) {
                     $hasManifest = [bool](Get-ChildItem $modDir -Recurse -Filter "$Name.psd1" -ErrorAction SilentlyContinue | Select-Object -First 1)
                 }
                 if ($hasManifest) {
@@ -565,7 +657,7 @@ public static extern System.IntPtr SendMessageTimeout(System.IntPtr hWnd, uint M
                     return
                 }
                 if (-not (Test-Path $ps7Mod)) { New-Item -ItemType Directory -Path $ps7Mod -Force | Out-Null }
-                if (Test-Path $modDir) {
+                if ((Test-Path $modDir) -and -not $have) {
                     Write-Log "  [..] $Name dir empty/corrupt, re-installing"
                     Remove-Item $modDir -Recurse -Force -ErrorAction SilentlyContinue
                 }
@@ -781,12 +873,81 @@ public static extern System.IntPtr SendMessageTimeout(System.IntPtr hWnd, uint M
             $escapedPath  = $opts.WorkDir -replace "'", "''"
             $themeLeaf    = $opts.ThemeFile
 
+            # Multi-pane: ventanas de Windows Terminal con 2/3/4 paneles del perfil
+            # oculto "Vorterm Mosaic" (negro puro, sin imagen de fondo). Cada panel
+            # registra su PID para que "close N" cierre un panel concreto.
+            $multiPaneBlock = ''
+            if ($opts.MultiPane) {
+                $multiPaneBlock = @'
+# --- Multi-pane: m2 / m3 / m4, close N, /commands -------------
+function Start-VortermMosaic {
+    param([int]$N, [switch]$Rows, [switch]$Claude)
+    if (-not (Get-Command wt.exe -ErrorAction SilentlyContinue)) { Write-Warning 'Windows Terminal (wt.exe) not found'; return }
+    $dir = Join-Path $env:TEMP 'vorterm-mpane'
+    if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Force -Path $dir | Out-Null }
+    Get-ChildItem $dir -File -ErrorAction SilentlyContinue | Where-Object { $_.LastWriteTime -lt (Get-Date).AddDays(-2) } |
+        Remove-Item -Force -ErrorAction SilentlyContinue
+    $g = [guid]::NewGuid().ToString('N').Substring(0, 8)
+    $cl = ''; if ($Claude) { $cl = ' -Claude' }
+    $shell = 'pwsh'; if (-not (Get-Command pwsh -ErrorAction SilentlyContinue)) { $shell = 'powershell' }
+    $p = '-p {7628d9b6-6917-4040-b9a2-986f96f1361d}'
+    $pane = { param($i) "$p --title `"Main $i`" $shell -NoLogo -NoExit -Command Initialize-VortermPane $g $i$cl" }
+    if ($N -eq 4 -and -not $Rows) {
+        $a = "new-tab $(& $pane 1) ; split-pane -V -s 0.5 $(& $pane 2) ; move-focus left ; split-pane -H -s 0.5 $(& $pane 3) ; move-focus right ; split-pane -H -s 0.5 $(& $pane 4)"
+    } else {
+        $d = '-V'; if ($Rows) { $d = '-H' }
+        $a = "new-tab $(& $pane 1)"
+        for ($i = 2; $i -le $N; $i++) {
+            $s = ([double]($N - $i + 1) / ($N - $i + 2)).ToString('0.###', [Globalization.CultureInfo]::InvariantCulture)
+            $a += " ; split-pane $d -s $s $(& $pane $i)"
+        }
+    }
+    Start-Process wt.exe -ArgumentList "-w new --maximized $a ; focus-pane -t 0"
+}
+function Initialize-VortermPane {
+    param([string]$Group, [int]$Index, [switch]$Claude)
+    $env:VORTERM_MGROUP = $Group; $env:VORTERM_MPANE = $Index
+    Set-Content -Path (Join-Path $env:TEMP "vorterm-mpane\$Group-$Index") -Value $PID
+    if ($Claude) {
+        if (Get-Command claude -ErrorAction SilentlyContinue) { claude } else { Write-Warning 'claude not found in PATH' }
+    }
+}
+function m2 { param([switch]$Rows, [switch]$Claude) Start-VortermMosaic 2 -Rows:$Rows -Claude:$Claude }
+function m3 { param([switch]$Rows, [switch]$Claude) Start-VortermMosaic 3 -Rows:$Rows -Claude:$Claude }
+function m4 { param([switch]$Rows, [switch]$Claude) Start-VortermMosaic 4 -Rows:$Rows -Claude:$Claude }
+function close {
+    param([Parameter(Mandatory = $true, ValueFromRemainingArguments = $true)][int[]]$Pane)
+    if (-not $env:VORTERM_MGROUP) { Write-Warning 'Only works in windows opened with m2, m3 or m4'; return }
+    foreach ($i in ($Pane | Sort-Object { $_ -eq [int]$env:VORTERM_MPANE })) {
+        $f = Join-Path $env:TEMP "vorterm-mpane\$($env:VORTERM_MGROUP)-$i"
+        $id = 0
+        if (Test-Path $f) { $id = [int](Get-Content $f | Select-Object -First 1) }
+        $proc = $null
+        if ($id) { $proc = Get-Process -Id $id -ErrorAction SilentlyContinue }
+        if ($proc -and @('pwsh', 'powershell') -contains $proc.ProcessName) {
+            Remove-Item $f -Force -ErrorAction SilentlyContinue
+            & taskkill.exe /T /F /PID $id | Out-Null
+        } else { Write-Warning "Pane $i is not open" }
+    }
+}
+function /commands {
+    $e = [char]27
+    @(
+        @('m2 / m3', '2 or 3 columns'), @('m4', '2x2 grid'), @('-Rows', 'stack as rows'), @('-Claude', 'Claude Code in every pane'),
+        @('close 2', 'close pane 2 (or several: close 2 3)'), @('', ''),
+        @('Ctrl+Shift+3', 'split tab in 3'), @('Ctrl+Shift+W', 'close current pane'), @('Alt+arrows', 'switch pane'),
+        @('Alt+Shift+arrows', 'resize'), @('Ctrl+Shift+Z', 'zoom pane'), @('Ctrl+Shift+B', 'type in all panes'), @('Alt+Shift+D', 'duplicate pane')
+    ) | ForEach-Object { if ($_[0]) { "  {0,-18} $e[2m{1}$e[0m" -f $_[0], $_[1] } else { '' } }
+}
+'@
+            }
+
             # Perfil unico para PS5.1 y PS7 con guards por version:
             #  - PSReadLine Prediction* solo si PSReadLine >= 2.2 (PS5.1 trae 2.0.0
             #    y "parametro no encontrado" NO se suprime con -ErrorAction).
             #  - oh-my-posh init cacheado + try/catch -> si falla, prompt fallback.
             $profileContent = @"
-# === Generated by Vorterm 7.1 - visual / terminal config ======
+# Vorterm $($opts.Version) - visual / terminal config
 
 # --- Extra PATH (developer tools when present) ----------------
 `$_pathAdds = 'C:\Program Files\Git\bin;C:\Program Files\Git\cmd;C:\Program Files\nodejs'
@@ -846,10 +1007,14 @@ if (Get-Module PSReadLine) {
     Set-PSReadLineOption -EditMode Windows                   -ErrorAction SilentlyContinue
 
     # Prediction: solo PSReadLine >= 2.2 (PS5.1 trae 2.0.0; el error de
-    # parametro desconocido NO se suprime con -ErrorAction)
-    if ((Get-Module PSReadLine).Version -ge [version]'2.2.0') {
-        Set-PSReadLineOption -PredictionSource History     -ErrorAction SilentlyContinue
-        Set-PSReadLineOption -PredictionViewStyle ListView -ErrorAction SilentlyContinue
+    # parametro desconocido NO se suprime con -ErrorAction) y solo con consola
+    # real: con la salida redirigida (scripts, agentes, pwsh -Command) PSReadLine
+    # lanza un error terminante que -ErrorAction tampoco suprime.
+    if ((Get-Module PSReadLine).Version -ge [version]'2.2.0' -and -not [Console]::IsOutputRedirected) {
+        try {
+            Set-PSReadLineOption -PredictionSource History
+            Set-PSReadLineOption -PredictionViewStyle ListView
+        } catch {}
     }
 
     Set-PSReadLineKeyHandler -Key Tab               -Function MenuComplete           -ErrorAction SilentlyContinue
@@ -868,8 +1033,18 @@ if (Get-Module PSReadLine) {
 # posh-git/Terminal-Icons cuestan ~550ms juntos. Defer via OnIdle ejecuta en
 # background despues del primer prompt, terminal aparece al usuario sin esperar.
 `$null = Register-EngineEvent -SourceIdentifier PowerShell.OnIdle -MaxTriggerCount 1 -Action {
-    Import-Module posh-git       -ErrorAction SilentlyContinue
-    Import-Module Terminal-Icons -ErrorAction SilentlyContinue
+    Import-Module posh-git -ErrorAction SilentlyContinue
+    # Terminal-Icons reescribe sus XML (prefs/temas) en cada import: varias consolas
+    # arrancando a la vez (m2/m3/m4) leen un fichero a medio escribir
+    # ("Import-Clixml: Root element is missing"). Import serializado entre procesos.
+    `$tiLock = New-Object System.Threading.Mutex(`$false, 'Local\Vorterm-TerminalIcons')
+    try {
+        try { [void]`$tiLock.WaitOne(10000) } catch [System.Threading.AbandonedMutexException] {}
+        Import-Module Terminal-Icons -ErrorAction SilentlyContinue
+    } finally {
+        try { `$tiLock.ReleaseMutex() } catch {}
+        `$tiLock.Dispose()
+    }
 }
 
 # --- Aliases --------------------------------------------------
@@ -969,6 +1144,8 @@ function sudo {
     }
 }
 
+$multiPaneBlock
+
 # --- Fallback prompt (only if oh-my-posh not active) ----------
 if (-not `$script:_ompActive) {
     `$script:_hasGit = [bool](Get-Command git.exe -ErrorAction SilentlyContinue)
@@ -993,7 +1170,7 @@ if (-not `$script:_ompActive) {
 if (-not `$global:__VortermStarted) {
     Set-Location '$escapedPath'
     `$global:__VortermStarted = `$true
-    Clear-Host
+    if (-not [Console]::IsOutputRedirected) { Clear-Host }
 }
 "@
 
@@ -1009,17 +1186,42 @@ if (-not `$global:__VortermStarted) {
                 Write-Log "  [DRY]   $ps7Path"
                 Write-Log "  [DRY]   $ps5Path"
             } else {
+                # Vorterm solo gestiona SU bloque entre marcadores. Lo que el usuario (u
+                # otras herramientas, p.ej. el lanzador claude2 de Claude Code Setup Guide)
+                # tenga fuera del bloque se conserva tal cual.
+                #  - fichero con marcadores        -> se sustituye solo el bloque
+                #  - perfil completo de 7.0 / 7.1  -> se migra a bloque (era 100% Vorterm)
+                #  - perfil propio del usuario     -> bloque arriba + contenido del usuario debajo
+                $begin = '# >>> vorterm >>>'
+                $end   = '# <<< vorterm <<<'
+                $block = "$begin (managed by Vorterm $($opts.Version); changes inside this block are replaced on the next install)`r`n" +
+                         $profileContent.Trim() + "`r`n$end"
                 foreach ($d in @($ps7Dir,$ps5Dir)) {
                     if (-not (Test-Path $d)) { New-Item -ItemType Directory -Force -Path $d | Out-Null }
                 }
                 foreach ($t in @(@{P=$ps7Path;T='PS7'}, @{P=$ps5Path;T='PS5.1'})) {
                     try {
-                        if (Test-Path $t.P) {
-                            $bk = "$($t.P).bak-$(Get-Date -Format yyyyMMddHHmmss)"
-                            Copy-Item $t.P $bk -Force
-                            Write-Log "  [..] backup $($t.T): $bk"
+                        $old = $null
+                        $new = $block + "`r`n"
+                        if (Test-Path -LiteralPath $t.P) {
+                            $old = [System.IO.File]::ReadAllText($t.P)
+                            $bi = $old.IndexOf($begin)
+                            $ei = $old.IndexOf($end)
+                            if ($bi -ge 0 -and $ei -gt $bi) {
+                                $new = $old.Substring(0, $bi) + $block + $old.Substring($ei + $end.Length)
+                            } elseif ($old -match '^\s*# === Generated by Vorterm') {
+                                Write-Log "  [..] $($t.T): perfil Vorterm antiguo, se migra a bloque gestionado"
+                            } elseif ($old.Trim()) {
+                                $new = $block + "`r`n`r`n" + $old
+                                Write-Log "  [..] $($t.T): se conserva tu contenido debajo del bloque Vorterm"
+                            }
                         }
-                        [System.IO.File]::WriteAllText($t.P, $profileContent, (New-Object System.Text.UTF8Encoding $true))
+                        if ($null -ne $old -and $old -ceq $new) {
+                            Write-Log "  [OK] profile $($t.T) already up to date: $($t.P)"
+                            continue
+                        }
+                        Backup-VortermFile $t.P
+                        [System.IO.File]::WriteAllText($t.P, $new, (New-Object System.Text.UTF8Encoding $true))
                         Write-Log "  [OK] profile $($t.T): $($t.P)"
                     } catch {
                         Write-Log "  [!!] profile $($t.T): $($_.Exception.Message)"
@@ -1069,8 +1271,9 @@ if (-not `$global:__VortermStarted) {
             if (-not $wtCandidates) {
                 Write-Log "  [!!] Windows Terminal settings.json not found (open WT once to generate it)"
             } else {
-                $ps7Guid = '{574e775e-4f2a-5b96-ac1e-a2962a402336}'
-                $ps5Guid = '{61c54bbd-c2c6-5271-96e7-009a87ff44bf}'
+                $ps7Guid    = '{574e775e-4f2a-5b96-ac1e-a2962a402336}'
+                $ps5Guid    = '{61c54bbd-c2c6-5271-96e7-009a87ff44bf}'
+                $mosaicGuid = '{7628d9b6-6917-4040-b9a2-986f96f1361d}'
 
                 # WT settings.json es JSONC: comentarios // /* */ Y comas finales.
                 # ConvertFrom-Json (PS5.1) revienta con ambos. Limpiar los dos
@@ -1120,13 +1323,14 @@ if (-not `$global:__VortermStarted) {
                         if ($DRY) {
                             Write-Log "  [DRY] parse OK: $wtJson"
                             Write-Log "  [DRY]   font -> '$nerdFontFace', defaultProfile -> PS7, startingDirectory -> $($opts.WorkDir)"
-                            if ($opts.Elevate) { Write-Log "  [DRY]   elevate -> true (UAC por pestaña)" }
+                            if ($opts.MultiPane) { Write-Log "  [DRY]   perfil oculto 'Vorterm Mosaic' + atajos Ctrl+Shift+3/B/Z (si estan libres)" }
+                            if ($opts.Elevate) { Write-Log "  [DRY]   elevate -> true (UAC por pestana)" }
                             continue
                         }
 
-                        $bk = "$wtJson.bak-$(Get-Date -Format yyyyMMddHHmmss)"
-                        Copy-Item $wtJson $bk -Force
-                        Write-Log "  [..] backup WT: $bk"
+                        # Serializacion de partida: solo se escribe (y se hace backup) si
+                        # algo cambia de verdad. Segunda ejecucion = fichero intacto.
+                        $before = $json | ConvertTo-Json -Depth 64
 
                         function Set-Prop {
                             param($obj, [string]$name, $value)
@@ -1157,13 +1361,16 @@ if (-not `$global:__VortermStarted) {
                         $patched = $false
                         if ($json.profiles.list) {
                             foreach ($prof in $json.profiles.list) {
-                                if ($prof.guid -eq $ps5Guid) { continue }
-                                # Solo el perfil PS7 de verdad. Match por nombre estricto:
-                                # "Developer PowerShell for VS 2022" y similares NO deben
-                                # tocarse (pisar su commandline rompe el dev shell de VS).
+                                if ($prof.guid -eq $ps5Guid -or $prof.guid -eq $mosaicGuid) { continue }
+                                # Solo el perfil PS7 de verdad: GUID/origen del perfil dinamico
+                                # de WT, o un perfil llamado exactamente "PowerShell [7]" que
+                                # lanza pwsh. NO cualquier perfil que mencione pwsh: perfiles
+                                # propios del usuario (o el Mosaic) y "Developer PowerShell for
+                                # VS" no se tocan.
                                 $isPwsh = ($prof.guid -eq $ps7Guid) -or
-                                          ($prof.commandline -match '(?i)\bpwsh(\.exe)?\b') -or
-                                          ($prof.name -match '^(?i)PowerShell(\s*7(\.\d+)?)?$')
+                                          ($prof.source -eq 'Windows.Terminal.PowershellCore') -or
+                                          (($prof.name -match '^(?i)PowerShell(\s*7(\.\d+)?)?$') -and
+                                           ($prof.commandline -match '(?i)^\s*"?[^"]*pwsh(\.exe)?"?(\s|$)'))
                                 if ($isPwsh) {
                                     Set-Prop $prof 'commandline' 'pwsh.exe -NoLogo -NoProfileLoadTime'
                                     Set-Prop $prof 'startingDirectory' $opts.WorkDir
@@ -1189,12 +1396,16 @@ if (-not `$global:__VortermStarted) {
                                         }
                                     }
                                     # Look del equipo de referencia: fondo, icono
-                                    # BTC, cursor de barra, scrollbar visible
-                                    if ($bgPath) {
+                                    # BTC, cursor de barra, scrollbar visible. Fondo e
+                                    # icono solo si el perfil no tiene ya uno propio.
+                                    $vtDir = Join-Path $env:LOCALAPPDATA 'Vorterm'
+                                    if ($bgPath -and (-not $prof.backgroundImage -or $prof.backgroundImage -like "$vtDir*")) {
                                         Set-Prop $prof 'backgroundImage' $bgPath
                                         Set-Prop $prof 'backgroundImageOpacity' 0.45
                                     }
-                                    if ($icoPath) { Set-Prop $prof 'icon' $icoPath }
+                                    if ($icoPath -and (-not $prof.icon -or $prof.icon -like "$vtDir*" -or $prof.icon -like 'ms-appx*')) {
+                                        Set-Prop $prof 'icon' $icoPath
+                                    }
                                     Set-Prop $prof 'cursorShape' 'bar'
                                     Set-Prop $prof 'scrollbarState' 'visible'
                                     Set-Prop $prof 'adjustIndistinguishableColors' 'automatic'
@@ -1236,15 +1447,109 @@ if (-not `$global:__VortermStarted) {
                             Write-Log "  [OK] WT defaultProfile -> PowerShell 7"
                         }
 
-                        # --- write back ------------------------
+                        # --- Multi-pane: perfil Mosaic + atajos ---
+                        if ($opts.MultiPane) {
+                            $mosaic = $null
+                            foreach ($prof in @($json.profiles.list)) { if ($prof.guid -eq $mosaicGuid) { $mosaic = $prof } }
+                            if (-not $mosaic) {
+                                $mosaic = [pscustomobject]@{ guid = $mosaicGuid; name = 'Vorterm Mosaic' }
+                                $json.profiles.list = @($json.profiles.list) + @($mosaic)
+                                Write-Log "  [OK] WT profile added: Vorterm Mosaic (oculto, lo usan m2/m3/m4)"
+                            }
+                            $mpCmd = if ($pwshExe) { 'pwsh.exe -NoLogo -NoProfileLoadTime' } else { 'powershell.exe -NoLogo' }
+                            Set-Prop $mosaic 'commandline' $mpCmd
+                            Set-Prop $mosaic 'hidden' $true
+                            Set-Prop $mosaic 'background' '#000000'
+                            Set-Prop $mosaic 'opacity' 100
+                            Set-Prop $mosaic 'useAcrylic' $false
+                            Set-Prop $mosaic 'closeOnExit' 'always'
+                            Set-Prop $mosaic 'cursorShape' 'bar'
+                            Set-Prop $mosaic 'scrollbarState' 'visible'
+                            Set-Prop $mosaic 'adjustIndistinguishableColors' 'automatic'
+                            Set-Prop $mosaic 'intenseTextStyle' 'none'
+                            if (-not $mosaic.font) {
+                                Set-Prop $mosaic 'font' ([pscustomobject]@{
+                                    face = $nerdFontFace; size = 14; weight = 'normal'
+                                    builtinGlyphs = $true; colorGlyphs = $true })
+                            } else {
+                                Set-Prop $mosaic.font 'face' $nerdFontFace
+                            }
+                            foreach ($k in 'backgroundImage','backgroundImageOpacity') {
+                                if ($mosaic.PSObject.Properties.Name -contains $k) { $mosaic.PSObject.Properties.Remove($k) }
+                            }
+                            if ($icoPath -and -not $mosaic.icon) { Set-Prop $mosaic 'icon' $icoPath }
+                            if ($opts.Elevate) { Set-Prop $mosaic 'elevate' $true }
+
+                            # Atajos: solo si la tecla esta libre. Nunca se pisa un atajo del usuario.
+                            $split3 = [pscustomobject]@{
+                                action  = 'multipleActions'
+                                actions = @(
+                                    [pscustomobject]@{ action = 'splitPane'; split = 'right'; size = 0.667; profile = $mosaicGuid },
+                                    [pscustomobject]@{ action = 'splitPane'; split = 'right'; size = 0.5;   profile = $mosaicGuid })
+                            }
+                            $wanted = @(
+                                @{ Id = 'User.VortermBroadcast'; Keys = 'ctrl+shift+b'; Command = 'toggleBroadcastInput'; Name = $null },
+                                @{ Id = 'User.VortermZoom';      Keys = 'ctrl+shift+z'; Command = 'togglePaneZoom';       Name = $null },
+                                @{ Id = 'User.VortermSplit3';    Keys = 'ctrl+shift+3'; Command = $split3;                Name = 'Vorterm: split tab in 3' }
+                            )
+                            if (-not ($json.PSObject.Properties.Name -contains 'actions'))     { Set-Prop $json 'actions' @() }
+                            if (-not ($json.PSObject.Properties.Name -contains 'keybindings')) { Set-Prop $json 'keybindings' @() }
+                            foreach ($w in $wanted) {
+                                if (@($json.keybindings | Where-Object { $_.id -eq $w.Id }).Count -gt 0) { continue }
+                                $bound = @(@($json.keybindings) + @($json.actions) | Where-Object { $_.keys } | ForEach-Object { $_.keys })
+                                if ($bound -contains $w.Keys) {
+                                    Write-Log "  [..] $($w.Keys) ya tiene un atajo propio, se respeta"
+                                    continue
+                                }
+                                $act = [pscustomobject]@{ command = $w.Command; id = $w.Id }
+                                if ($w.Name) { Set-Prop $act 'name' $w.Name }
+                                if (@($json.actions | Where-Object { $_.id -eq $w.Id }).Count -eq 0) {
+                                    $json.actions = @($json.actions) + @($act)
+                                }
+                                $json.keybindings = @($json.keybindings) + @([pscustomobject]@{ id = $w.Id; keys = $w.Keys })
+                                Write-Log "  [OK] WT atajo $($w.Keys) -> $($w.Id)"
+                            }
+                        }
+
+                        # --- write back (solo si hay cambios) -------
                         $out = $json | ConvertTo-Json -Depth 64
-                        [System.IO.File]::WriteAllText($wtJson, $out, (New-Object System.Text.UTF8Encoding $false))
-                        Write-Log "  [OK] WT settings written: $wtJson"
+                        if ($out -ceq $before) {
+                            Write-Log "  [OK] WT settings already up to date: $wtJson"
+                        } else {
+                            Backup-VortermFile $wtJson
+                            [System.IO.File]::WriteAllText($wtJson, $out, (New-Object System.Text.UTF8Encoding $false))
+                            Write-Log "  [OK] WT settings written: $wtJson"
+                        }
                     } catch {
                         Write-Log "  [!!] WT cfg: $($_.Exception.Message)"
                         $script:failures += 'wt-config'
                     }
                 }
+            }
+        }
+
+        # ---- LAB CloudOps (opcional, solo ficheros locales) ----
+        # La logica vive en lab\New-VortermLab.ps1 (usable tambien por separado). Sin red,
+        # sin inicio de sesion, sin admin y sin tocar Azure/M365: solo carpetas y plantillas.
+        if ($opts.Lab) {
+            Set-Status 'LAB CloudOps' 91
+            try {
+                if (-not $opts.LabScript -or -not (Test-Path -LiteralPath $opts.LabScript)) {
+                    throw "generador no encontrado: $($opts.LabScript) (falta la carpeta lab\ junto al instalador)"
+                }
+                $labRes = & $opts.LabScript -Root $opts.LabRoot -Adopt:([bool]$opts.LabAdopt) -DryRun:$DRY -PassThru
+                $tag = if ($DRY) { 'DRY' } else { 'OK' }
+                if ($labRes.ExitCode -eq 0) {
+                    Write-Log ("  [{0}] LAB ({1}): {2}" -f $tag, $labRes.Mode, $labRes.LabPath)
+                    Write-Log ("       creados {0} | actualizados {1} | sin cambios {2} | tuyos, no tocados {3} | carpetas {4}" -f `
+                        $labRes.Created.Count, $labRes.Updated.Count, $labRes.Unchanged.Count, $labRes.Kept.Count, $labRes.Directories.Count)
+                } else {
+                    foreach ($e in $labRes.Errors) { Write-Log "  [!!] LAB: $e" }
+                    $script:failures += 'lab'
+                }
+            } catch {
+                Write-Log "  [!!] LAB: $($_.Exception.Message)"
+                $script:failures += 'lab'
             }
         }
 
@@ -1257,7 +1562,9 @@ if (-not `$global:__VortermStarted) {
             if ($pwshExe -and $opts.WriteProfile -and -not $DRY) {
                 try {
                     Write-Log "  [..] smoke test: cargando perfil en pwsh..."
-                    $smokeRaw = & $pwshExe -NoLogo -Command '"__SMOKE_END__"' 2>&1
+                    # Comillas simples: las dobles las quita el parser de argumentos de
+                    # Windows y pwsh recibia __SMOKE_END__ como comando inexistente.
+                    $smokeRaw = & $pwshExe -NoLogo -Command "'__SMOKE_END__'" 2>&1
                     $smokeErr = @($smokeRaw | Where-Object { $_ -is [System.Management.Automation.ErrorRecord] })
                     if ($smokeErr.Count -gt 0) {
                         Write-Log "  [!!] el perfil emite errores al arrancar:"
@@ -1275,7 +1582,9 @@ if (-not `$global:__VortermStarted) {
 
             if ($pwshExe -and $opts.Icons -and -not $DRY) {
                 try {
-                    $verifyCmd = 'Import-Module Terminal-Icons -ErrorAction Stop; if (Get-Module Terminal-Icons) { "OK" } else { "MISSING" }'
+                    # Sin comillas dobles dentro: PowerShell 5.1 las pierde al pasar a un exe
+                    # un argumento con espacios ("OK" llegaba como OK -> comando inexistente).
+                    $verifyCmd = "Import-Module Terminal-Icons -ErrorAction Stop; if (Get-Module Terminal-Icons) { 'OK' } else { 'MISSING' }"
                     $verifyOut = & $pwshExe -NoProfile -NoLogo -Command $verifyCmd 2>&1
                     if ($verifyOut -match 'OK') {
                         Write-Log "  [OK] Terminal-Icons loads cleanly in PS7"
@@ -1344,6 +1653,26 @@ if (-not `$global:__VortermStarted) {
                 Write-Log "  [!!] No Nerd Font detected. ls icons will not render"
                 if (-not $DRY) { $script:failures += 'nerd-font' }
             }
+
+            if ($opts.MultiPane -and $opts.WriteProfile -and $pwshExe -and -not $DRY) {
+                $mp = & $pwshExe -NoLogo -NonInteractive -Command "if ((Get-Command m3 -ErrorAction SilentlyContinue) -and (Get-Command close -ErrorAction SilentlyContinue)) { 'MP_OK' }" 2>$null
+                if ($mp -match 'MP_OK') {
+                    Write-Log "  [OK] multi-pane: m2 / m3 / m4, close N, /commands"
+                } else {
+                    Write-Log "  [!!] multi-pane functions not loaded by the profile"
+                    $script:failures += 'multipane'
+                }
+            }
+
+            if ($opts.Lab -and -not $DRY) {
+                $labMarker = Join-Path (Join-Path $opts.LabRoot 'LAB') '.vorterm-lab.json'
+                if (Test-Path -LiteralPath $labMarker) {
+                    Write-Log "  [OK] LAB ready: $(Split-Path $labMarker -Parent)"
+                } else {
+                    Write-Log "  [!!] LAB marker missing: $labMarker"
+                    $script:failures += 'lab-verify'
+                }
+            }
         }
 
         # ---- Done ----------------------------------------
@@ -1365,9 +1694,12 @@ if (-not `$global:__VortermStarted) {
         Write-Log "============================================================"
         Write-Log ""
         Write-Log "Reinicia Windows Terminal para cargar fuente + tema."
-        if ($opts.Elevate) { Write-Log "Aviso: pestañas PS7 elevadas -> UAC por pestaña." }
+        if ($opts.Elevate) { Write-Log "Aviso: pestanas PS7 elevadas -> UAC por pestana." }
         Write-Log "Glifos como cajas? WT Settings -> PowerShell -> Appearance -> Font -> Nerd Font."
         Write-Log "Helpers: html, open, serve, sudo, touch, profile, SysInfo, Update-Modules."
+        if ($opts.MultiPane) { Write-Log "Multi-pane: m2 / m3 / m4 [-Rows] [-Claude], close N, /commands." }
+        if ($opts.Lab) { Write-Log "LAB: abre $(Join-Path $opts.LabRoot 'LAB')\README.md para empezar." }
+        if ($opts.LogFile) { Write-Log "Log completo: $($opts.LogFile)" }
 
     } catch {
         # Excepcion no controlada: registrar SIEMPRE, no dejar la GUI colgada.
@@ -1462,6 +1794,7 @@ $ResetLogic = {
         $sb.ToString()
     }
 
+    $ErrorActionPreference = 'Continue'
     $started   = Get-Date
     $failures  = @()
     $stamp     = Get-Date -Format yyyyMMddHHmmss
@@ -1503,25 +1836,56 @@ $ResetLogic = {
                 'Microsoft.PowerShellISE_profile.ps1',
                 'Microsoft.VSCode_profile.ps1'
             )
+            # Solo se toca lo que es de Vorterm, y siempre con copia .before-reset-* antes:
+            #  - bloque entre marcadores (7.2+) -> se quita el bloque, el resto se conserva
+            #  - perfil completo antiguo (7.0/7.1) -> se restaura el ultimo backup que NO
+            #    sea de Vorterm (= el perfil que habia antes); sin el, se aparta y se borra
+            #  - cualquier otro perfil -> no se toca
+            $begin = '# >>> vorterm >>>'
+            $end   = '# <<< vorterm <<<'
             foreach ($d in $profileDirs) {
                 if (-not (Test-Path $d)) { continue }
                 foreach ($n in $profileNames) {
                     $p = Join-Path $d $n
+                    if (-not (Test-Path -LiteralPath $p)) { continue }
                     try {
-                        $bks = Get-ChildItem -Path "$p.bak-*" -File -ErrorAction SilentlyContinue |
-                               Sort-Object LastWriteTime -Descending
-                        if ($bks -and $bks.Count -gt 0) {
-                            if ($DRY) { Write-Log "  [DRY] restauraria $p desde $($bks[0].Name)"; continue }
-                            Copy-Item $bks[0].FullName $p -Force
-                            Write-Log "  [OK] restored $p"
-                            Write-Log "       from: $($bks[0].Name)"
-                        } elseif (Test-Path $p) {
-                            if ($DRY) { Write-Log "  [DRY] moveria $p a .before-reset-$stamp"; continue }
-                            $bk = "$p.before-reset-$stamp"
-                            Copy-Item $p $bk -Force
-                            Remove-Item $p -Force
-                            Write-Log "  [OK] removed $p"
-                            Write-Log "       safety copy: $bk"
+                        $txt = [IO.File]::ReadAllText($p)
+                        $bi = $txt.IndexOf($begin)
+                        $ei = $txt.IndexOf($end)
+                        $safety = "$p.before-reset-$stamp"
+                        if ($bi -ge 0 -and $ei -gt $bi) {
+                            $rest = ($txt.Substring(0, $bi) + $txt.Substring($ei + $end.Length)).Trim()
+                            if ($DRY) { Write-Log "  [DRY] quitaria el bloque Vorterm de $p (se conserva el resto)"; continue }
+                            Copy-Item -LiteralPath $p -Destination $safety -Force
+                            if ($rest) {
+                                [IO.File]::WriteAllText($p, $rest + "`r`n", (New-Object Text.UTF8Encoding $true))
+                                Write-Log "  [OK] Vorterm block removed, your content kept: $p"
+                            } else {
+                                Remove-Item -LiteralPath $p -Force
+                                Write-Log "  [OK] removed $p (only had the Vorterm block)"
+                            }
+                            Write-Log "       safety copy: $safety"
+                        } elseif ($txt -match '^\s*# === Generated by Vorterm') {
+                            $orig = Get-ChildItem -Path "$p.bak-*" -File -ErrorAction SilentlyContinue |
+                                    Sort-Object LastWriteTime -Descending |
+                                    Where-Object { -not ([IO.File]::ReadAllText($_.FullName) -match '^\s*# === Generated by Vorterm') } |
+                                    Select-Object -First 1
+                            if ($DRY) {
+                                if ($orig) { Write-Log "  [DRY] restauraria $p desde $($orig.Name)" }
+                                else       { Write-Log "  [DRY] apartaria $p (perfil Vorterm antiguo sin backup previo)" }
+                                continue
+                            }
+                            Copy-Item -LiteralPath $p -Destination $safety -Force
+                            if ($orig) {
+                                Copy-Item -LiteralPath $orig.FullName -Destination $p -Force
+                                Write-Log "  [OK] restored $p from $($orig.Name)"
+                            } else {
+                                Remove-Item -LiteralPath $p -Force
+                                Write-Log "  [OK] removed old Vorterm profile $p"
+                            }
+                            Write-Log "       safety copy: $safety"
+                        } else {
+                            Write-Log "  [..] not a Vorterm profile, left untouched: $p"
                         }
                     } catch {
                         Write-Log "  [!!] $p : $($_.Exception.Message)"
@@ -1530,18 +1894,17 @@ $ResetLogic = {
                 }
             }
 
-            # OMP init cache generado por el perfil Vorterm
+            # Cache de init de oh-my-posh del perfil Vorterm (solo esos ficheros; los
+            # assets de Windows Terminal y los logs se quedan)
             $ompCacheDir = Join-Path $env:LOCALAPPDATA 'Vorterm'
-            if (Test-Path $ompCacheDir) {
-                if ($DRY) {
-                    Write-Log "  [DRY] borraria cache OMP: $ompCacheDir"
-                } else {
-                    try {
-                        Remove-Item $ompCacheDir -Recurse -Force -ErrorAction Stop
-                        Write-Log "  [OK] removed OMP init cache: $ompCacheDir"
-                    } catch {
-                        Write-Log "  [!!] cache: $($_.Exception.Message)"
-                    }
+            $ompCaches = @(Get-ChildItem -Path (Join-Path $ompCacheDir 'omp-init*.ps1') -File -ErrorAction SilentlyContinue)
+            foreach ($c in $ompCaches) {
+                if ($DRY) { Write-Log "  [DRY] borraria cache OMP: $($c.FullName)"; continue }
+                try {
+                    Remove-Item -LiteralPath $c.FullName -Force -ErrorAction Stop
+                    Write-Log "  [OK] removed OMP init cache: $($c.Name)"
+                } catch {
+                    Write-Log "  [!!] cache: $($_.Exception.Message)"
                 }
             }
         }
@@ -1581,71 +1944,26 @@ $ResetLogic = {
         if ($opts.CleanModules) {
             Set-Status 'Modules' 45
 
-            $allowList = @(
-                'PSReadLine','Terminal-Icons','posh-git','oh-my-posh',
-                'PowerLine','PSColor','Get-ChildItemColor','GetChildItemColor',
-                'Pansies','PoshColor','PSFzf','PSEverything','cd-extras','z',
-                'PowerShellHumanizer','BurntToast','DockerCompletion','PSDirTagger',
-                'WslInterop'
-            )
-            $blockPatterns = @(
-                '^Az\.', '^AzureAD', '^AzureRM',
-                '^Microsoft\.Graph', '^MSOnline',
-                '^ExchangeOnlineManagement$', '^Exchange',
-                '^MicrosoftTeams$', '^PnP\.', '^SharePoint',
-                '^Microsoft\.PowerShell\.', '^PowerShellGet$', '^PackageManagement$',
-                '^PSScriptAnalyzer$', '^Pester$', '^SqlServer$', '^dbatools$',
-                '^Microsoft\.WSMan'
-            )
-
-            foreach ($name in $allowList) {
-                $blocked = $false
-                foreach ($pat in $blockPatterns) {
-                    if ($name -match $pat) { $blocked = $true; break }
-                }
-                if ($blocked) { Write-Log "  [..] $name in blocklist - skipped"; continue }
-
-                try {
-                    $installed = Get-Module -ListAvailable -Name $name -ErrorAction SilentlyContinue
-                    if (-not $installed) { continue }
-
-                    if ($DRY) {
-                        Write-Log "  [DRY] desinstalaria modulo: $name"
-                        continue
-                    }
-
-                    Get-Module -Name $name -ErrorAction SilentlyContinue |
-                        Remove-Module -Force -ErrorAction SilentlyContinue
-
+            # Solo los modulos que instala Vorterm, y solo las copias de USUARIO que
+            # Save-Module dejo en la carpeta de modulos de PowerShell 7 (local u OneDrive).
+            # La PSReadLine que trae Windows / PowerShell 7 y cualquier otro modulo
+            # (Az, Graph, EXO, z, PSFzf...) no se tocan.
+            $docsList = @((Join-Path $env:USERPROFILE 'Documents'))
+            try { $rd = [Environment]::GetFolderPath('MyDocuments'); if ($rd) { $docsList += $rd } } catch {}
+            $modRoots = $docsList | Sort-Object -Unique | ForEach-Object { Join-Path $_ 'PowerShell\Modules' } |
+                        Where-Object { Test-Path -LiteralPath $_ }
+            foreach ($name in 'Terminal-Icons', 'posh-git', 'PSReadLine') {
+                foreach ($mr in $modRoots) {
+                    $modDir = Join-Path $mr $name
+                    if (-not (Test-Path -LiteralPath $modDir)) { continue }
+                    if ($DRY) { Write-Log "  [DRY] borraria modulo de usuario: $modDir"; continue }
                     try {
-                        Uninstall-Module -Name $name -AllVersions -Force -ErrorAction Stop
-                        Write-Log "  [OK] uninstalled $name (all versions)"
+                        Remove-Item -LiteralPath $modDir -Recurse -Force -ErrorAction Stop
+                        Write-Log "  [OK] removed $name ($modDir)"
                     } catch {
-                        # Some modules (like a system-wide PSReadLine bundled with Windows)
-                        # cannot be Uninstall-Module'd. Try manual file removal as fallback.
-                        $manualRemoved = $false
-                        foreach ($m in $installed) {
-                            $modBase = $m.ModuleBase
-                            if ($modBase -and (Test-Path $modBase) -and ($modBase -like "$env:USERPROFILE*")) {
-                                try {
-                                    Remove-Item $modBase -Recurse -Force -ErrorAction Stop
-                                    Write-Log "  [OK] removed $name $($m.Version) at $modBase"
-                                    $manualRemoved = $true
-                                } catch {
-                                    Write-Log "  [!!] $name $($m.Version) at $modBase : $($_.Exception.Message)"
-                                }
-                            } else {
-                                Write-Log "  [..] $name $($m.Version) at $modBase (system path, skipped)"
-                            }
-                        }
-                        if (-not $manualRemoved) {
-                            Write-Log "  [!!] uninstall $name : $($_.Exception.Message)"
-                            $failures += "uninstall-$name"
-                        }
+                        Write-Log "  [!!] $name at $modDir : $($_.Exception.Message) (cierra las consolas pwsh abiertas)"
+                        $failures += "module-$name"
                     }
-                } catch {
-                    Write-Log "  [!!] $name : $($_.Exception.Message)"
-                    $failures += "module-$name"
                 }
             }
 
@@ -1681,16 +1999,20 @@ $ResetLogic = {
                 $signature = 'pwsh.exe -NoLogo -NoProfileLoadTime'
                 $ps7Guid   = '{574e775e-4f2a-5b96-ac1e-a2962a402336}'
 
+                $mosaicGuid = '{7628d9b6-6917-4040-b9a2-986f96f1361d}'
+                $vtDir      = Join-Path $env:LOCALAPPDATA 'Vorterm'
                 foreach ($wt in $wtCandidates) {
                     try {
-                        $bks = Get-ChildItem -Path "$wt.bak-*" -File -ErrorAction SilentlyContinue |
-                               Sort-Object LastWriteTime -Descending
-
-                        if ($bks -and $bks.Count -gt 0) {
-                            if ($DRY) { Write-Log "  [DRY] restauraria $wt desde $($bks[0].Name)"; continue }
-                            Copy-Item $bks[0].FullName $wt -Force
-                            Write-Log "  [OK] restored $wt"
-                            Write-Log "       from: $($bks[0].Name)"
+                        # 7.2+: copia tomada la primera vez que Vorterm toco el fichero.
+                        # Se guarda el estado actual antes de restaurar.
+                        $orig = "$wt.vorterm-original"
+                        if (Test-Path -LiteralPath $orig) {
+                            if ($DRY) { Write-Log "  [DRY] restauraria $wt desde $(Split-Path $orig -Leaf)"; continue }
+                            Copy-Item -LiteralPath $wt -Destination "$wt.before-reset-$stamp" -Force
+                            Copy-Item -LiteralPath $orig -Destination $wt -Force
+                            Remove-Item -LiteralPath $orig -Force
+                            Write-Log "  [OK] restored $wt (state before Vorterm)"
+                            Write-Log "       safety copy: $wt.before-reset-$stamp"
                             continue
                         }
 
@@ -1719,7 +2041,31 @@ $ResetLogic = {
                                         $changed = $true
                                     }
                                 }
+                                foreach ($k in 'backgroundImage','icon') {
+                                    if ($prof.$k -and $prof.$k -like "$vtDir*") {
+                                        $prof.PSObject.Properties.Remove($k)
+                                        if ($k -eq 'backgroundImage') { $prof.PSObject.Properties.Remove('backgroundImageOpacity') }
+                                        $changed = $true
+                                    }
+                                }
                                 Write-Log "  [OK] stripped keys from profile: $($prof.name)"
+                            }
+                            $kept = @($json.profiles.list | Where-Object { $_.guid -ne $mosaicGuid })
+                            if ($kept.Count -ne @($json.profiles.list).Count) {
+                                $json.profiles.list = $kept
+                                $changed = $true
+                                Write-Log "  [OK] removed hidden profile Vorterm Mosaic"
+                            }
+                        }
+
+                        foreach ($arr in 'actions','keybindings') {
+                            if ($json.PSObject.Properties.Name -contains $arr) {
+                                $keep = @($json.$arr | Where-Object { -not ($_.id -like 'User.Vorterm*') })
+                                if ($keep.Count -ne @($json.$arr).Count) {
+                                    $json.$arr = $keep
+                                    $changed = $true
+                                    Write-Log "  [OK] removed Vorterm $arr"
+                                }
                             }
                         }
 
@@ -1773,6 +2119,7 @@ $ResetLogic = {
         $failures += 'fatal'
         Set-Status 'Error' 100
     } finally {
+        $script:resetFailures = $failures
         if (-not $sync.NoGui) {
             $sync.Window.Dispatcher.Invoke([action]{
                 $sync.InstallBtn.IsEnabled = $true
@@ -1795,14 +2142,45 @@ $ResetLogic = {
 # =============================================================
 #  CONSOLE MODE (-NoGui): para pruebas y automatizacion
 # =============================================================
+function Get-DefaultDocs {
+    $d = try { [Environment]::GetFolderPath('MyDocuments') } catch { $null }
+    if (-not $d) { $d = Join-Path $env:USERPROFILE 'Documents' }
+    return $d
+}
+
+function New-VortermLogFile {
+    param([string]$Kind)
+    $dir = Join-Path $env:LOCALAPPDATA 'Vorterm\logs'
+    try {
+        if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
+        return (Join-Path $dir ("{0}-{1}.log" -f $Kind, (Get-Date -Format yyyyMMdd-HHmmss)))
+    } catch { return $null }
+}
+
+$script:LabScriptPath = $null
+if ($PSScriptRoot) { $script:LabScriptPath = Join-Path $PSScriptRoot 'lab\New-VortermLab.ps1' }
+
 if ($NoGui) {
     $sync = @{
         NoGui       = $true
         ActiveProcs = [System.Collections.ArrayList]::new()
         Paused      = $false
     }
+    if ($Reset) {
+        $opts = @{
+            CleanProfile = $true
+            CleanHistory = $false
+            CleanModules = $true
+            CleanWT      = $true
+            DryRun       = [bool]$DryRun
+        }
+        & $ResetLogic
+        if ($script:resetFailures -and @($script:resetFailures).Count -gt 0) { exit 1 }
+        exit 0
+    }
     $opts = @{
-        WorkDir      = Join-Path $env:USERPROFILE 'Documents'
+        Version      = $script:VortermVersion
+        WorkDir      = $(if ($WorkDir) { $WorkDir } else { Get-DefaultDocs })
         Pwsh         = $true
         Git          = $true
         WT           = $true
@@ -1813,24 +2191,32 @@ if ($NoGui) {
         PoshGit      = $true
         WriteProfile = $true
         WTConfig     = $true
+        MultiPane    = -not $NoMultiPane
         Elevate      = $false
-        VSCode       = $false
+        VSCode       = [bool]$VSCode
         Neovim       = $false
         SevenZip     = $false
         GitHubDesktop = $false
         WSL          = $false
-        ClaudeCode   = $false
+        ClaudeCode   = [bool]$ClaudeCode
         Codex        = $false
         Antigravity  = $false
+        Node         = [bool]$Node
+        Lab          = [bool]$LabRoot
+        LabRoot      = $LabRoot
+        LabAdopt     = [bool]$LabAdopt
+        LabScript    = $script:LabScriptPath
         Policy       = $true
         Verify       = $true
         DryRun       = [bool]$DryRun
+        LogFile      = $(if ($DryRun) { $null } else { New-VortermLogFile 'install' })
         ThemeFile    = $script:ThemeFileName
         ThemeSrc     = $script:ThemeSrc
         ThemeJson    = $script:ThemeJson
     }
     & $InstallLogic
-    return
+    if ($script:failures.Count -gt 0) { exit 1 }
+    exit 0
 }
 
 # =============================================================
@@ -1841,7 +2227,7 @@ if ($NoGui) {
 [xml]$xaml = @'
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Vorterm 7.1"
+        Title="Vorterm 7.2"
         Height="940" Width="1700"
         MinHeight="560" MinWidth="980"
         WindowStartupLocation="CenterScreen"
@@ -2168,7 +2554,7 @@ if ($NoGui) {
             <DropShadowEffect Color="#fcee0a" BlurRadius="22" ShadowDepth="0" Opacity="0.7"/>
           </TextBlock.Effect>
         </TextBlock>
-        <TextBlock Text="VII.1"
+        <TextBlock Text="VII.2"
                    FontFamily="JetBrains Mono, Cascadia Mono, Consolas"
                    FontSize="12" Foreground="{StaticResource Muted}"
                    HorizontalAlignment="Center" Margin="0,4,0,0"/>
@@ -2184,9 +2570,9 @@ if ($NoGui) {
         <TextBlock Text="I / STARTUP"
                    Style="{StaticResource RomanLabel}"
                    VerticalAlignment="Center" Margin="0,0,18,0"
-                   ToolTip="Directorio inicial de las nuevas pestañas de terminal"/>
+                   ToolTip="Directorio inicial de las nuevas pestanas de terminal"/>
         <TextBox x:Name="PathBox" Grid.Column="1"
-                 ToolTip="Directorio inicial de las nuevas pestañas de terminal"/>
+                 ToolTip="Directorio inicial de las nuevas pestanas de terminal"/>
         <Button x:Name="BrowseBtn" Grid.Column="2" Content="BROWSE"
                 Style="{StaticResource GhostButton}" Margin="14,0,0,0"
                 Padding="22,7" FontSize="13"/>
@@ -2201,7 +2587,7 @@ if ($NoGui) {
         </Grid.ColumnDefinitions>
 
         <Grid Grid.Column="0" Margin="0,0,18,0">
-          <StackPanel>
+          <StackPanel x:Name="SetupPanel">
             <TextBlock Text="II / SETUP" Style="{StaticResource RomanLabel}"/>
             <Border Style="{StaticResource SectionRule}"/>
             <CheckBox x:Name="cb_vscode"  Content="visual studio code"  IsChecked="False"/>
@@ -2216,6 +2602,27 @@ if ($NoGui) {
                       ToolTip="CLI agente de OpenAI (winget OpenAI.Codex)"/>
             <CheckBox x:Name="cb_antigrav" Content="antigravity"        IsChecked="False"
                       ToolTip="IDE agente de Google (winget Google.Antigravity)"/>
+            <CheckBox x:Name="cb_node"    Content="node.js lts"         IsChecked="False"
+                      ToolTip="Runtime para servidores MCP via npx (lo usa Claude Code Setup Guide). winget OpenJS.NodeJS.LTS"/>
+            <CheckBox x:Name="cb_multipane" Content="multi-pane  (m2 / m3 / m4)" IsChecked="True"
+                      ToolTip="Perfil oculto Vorterm Mosaic (negro, sin imagen) + comandos m2 / m3 / m4, close N y /commands.&#10;Atajos Ctrl+Shift+3 / B / Z solo si estan libres."/>
+            <CheckBox x:Name="cb_lab"     Content="lab cloudops / azure" IsChecked="False"
+                      ToolTip="Estructura de trabajo LAB con CLAUDE.md, plantillas y documentacion. Solo ficheros locales."/>
+            <StackPanel x:Name="LabPanel" Visibility="Collapsed" Margin="26,2,0,6">
+              <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="{StaticResource Muted}" Margin="0,0,0,8"
+                         Text="Crea LAB dentro de la carpeta elegida: areas Azure, M365, Outlook, Intune, seguridad, CloudOps, PowerShell, DevOps, docs, plantillas y CLAUDE.md (menos de 1 MB). Solo ficheros locales: sin admin, sin iniciar sesion, sin conectar a Azure ni M365. Nunca sobrescribe tus ficheros."/>
+              <Grid>
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="*"/>
+                  <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBox x:Name="LabPathBox" Grid.Column="0" ToolTip="Carpeta donde se creara LAB"/>
+                <Button x:Name="LabBrowseBtn" Grid.Column="1" Content="BROWSE"
+                        Style="{StaticResource GhostButton}" Margin="10,0,0,0" Padding="14,5" FontSize="12"/>
+              </Grid>
+              <TextBlock x:Name="LabTarget" FontSize="12" Foreground="{StaticResource Muted}"
+                         Margin="0,6,0,0" TextWrapping="Wrap"/>
+            </StackPanel>
           </StackPanel>
         </Grid>
 
@@ -2226,12 +2633,12 @@ if ($NoGui) {
             <Border Style="{StaticResource SectionRule}" Background="{StaticResource Danger}"/>
             <CheckBox x:Name="cb_clean_profile" Content="powershell profiles" IsChecked="True"
                       ToolTip="Restaura backup Vorterm o mueve el perfil a .before-reset-*"/>
-            <CheckBox x:Name="cb_clean_history" Content="psreadline history"  IsChecked="True"
-                      ToolTip="Borra los ficheros *_history.txt de PSReadLine"/>
+            <CheckBox x:Name="cb_clean_history" Content="psreadline history"  IsChecked="False"
+                      ToolTip="Borra los ficheros *_history.txt de PSReadLine (sin copia)"/>
             <CheckBox x:Name="cb_clean_modules" Content="terminal modules"    IsChecked="True"
-                      ToolTip="Desinstala Terminal-Icons, posh-git, oh-my-posh...&#10;Az/Graph/EXO y modulos de sistema NUNCA se tocan"/>
+                      ToolTip="Quita las copias de usuario de Terminal-Icons, posh-git y PSReadLine + oh-my-posh.&#10;Ningun otro modulo se toca"/>
             <CheckBox x:Name="cb_clean_wt"      Content="windows terminal"    IsChecked="True"
-                      ToolTip="Restaura settings.json desde backup Vorterm.&#10;Schemes y keybindings se conservan"/>
+                      ToolTip="Restaura settings.json al estado anterior a Vorterm (copia previa guardada).&#10;Quita el perfil Mosaic y los atajos Vorterm"/>
           </StackPanel>
         </Grid>
 
@@ -2352,7 +2759,8 @@ $controls = @{}
 foreach ($n in 'PathBox','BrowseBtn','LogBox','Progress','StatusText','ExitBtn','ResetBtn','InstallBtn','PauseBtn',
                'PathsPanel','RootScroll','RootGrid',
                'cb_vscode','cb_neovim','cb_7zip','cb_github','cb_wsl',
-               'cb_claude','cb_codex','cb_antigrav',
+               'cb_claude','cb_codex','cb_antigrav','cb_node','cb_multipane','cb_lab',
+               'SetupPanel','LabPanel','LabPathBox','LabBrowseBtn','LabTarget',
                'cb_clean_profile','cb_clean_wt','cb_clean_modules','cb_clean_history') {
     $controls[$n] = $window.FindName($n)
 }
@@ -2381,6 +2789,7 @@ function Update-RootHeight {
 }
 $controls.RootScroll.Add_SizeChanged({ Update-RootHeight })
 $controls.PathsPanel.Add_SizeChanged({ Update-RootHeight })
+$controls.SetupPanel.Add_SizeChanged({ Update-RootHeight })
 # Primer calculo cuando el layout inicial ya tiene medidas reales
 $window.Add_ContentRendered({ Update-RootHeight })
 
@@ -2454,14 +2863,15 @@ if (-not $pwshExePath) {
 }
 if (-not $pwshExePath) { $pwshExePath = '(not installed)' }
 
-Add-PathRow 'PS7 profile'        (Join-Path $env:USERPROFILE 'Documents\PowerShell\Microsoft.PowerShell_profile.ps1')
-Add-PathRow 'PS7 modules'        (Join-Path $env:USERPROFILE 'Documents\PowerShell\Modules')
+$docsRoot = Get-DefaultDocs
+Add-PathRow 'PS7 profile'        (Join-Path $docsRoot 'PowerShell\Microsoft.PowerShell_profile.ps1')
+Add-PathRow 'PS7 modules'        (Join-Path $docsRoot 'PowerShell\Modules')
 Add-PathRow 'Windows Terminal'   "$env:LOCALAPPDATA\Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json"
 Add-PathRow 'pwsh.exe'           $pwshExePath
 Add-PathRow 'OMP themes folder'  (Join-Path $env:USERPROFILE '.poshthemes')
 Add-PathRow 'OMP active theme'   (Join-Path $env:USERPROFILE ".poshthemes\$($script:ThemeFileName)")
 
-$controls.PathBox.Text = Join-Path $env:USERPROFILE 'Documents'
+$controls.PathBox.Text = $docsRoot
 
 $controls.BrowseBtn.Add_Click({
     $dlg = New-Object System.Windows.Forms.FolderBrowserDialog
@@ -2470,6 +2880,26 @@ $controls.BrowseBtn.Add_Click({
     $dlg.ShowNewFolderButton = $true
     if ($dlg.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
         $controls.PathBox.Text = $dlg.SelectedPath
+    }
+})
+
+# ------ LAB CloudOps (opcional) -----------------------------
+function Update-LabTarget {
+    $r = $controls.LabPathBox.Text.Trim().Trim('"')
+    if ($r) { $controls.LabTarget.Text = "-> " + (Join-Path $r 'LAB') } else { $controls.LabTarget.Text = '' }
+}
+$controls.LabPathBox.Text = $docsRoot
+Update-LabTarget
+$controls.LabPathBox.Add_TextChanged({ Update-LabTarget })
+$controls.cb_lab.Add_Checked({   $controls.LabPanel.Visibility = [System.Windows.Visibility]::Visible })
+$controls.cb_lab.Add_Unchecked({ $controls.LabPanel.Visibility = [System.Windows.Visibility]::Collapsed })
+$controls.LabBrowseBtn.Add_Click({
+    $dlg = New-Object System.Windows.Forms.FolderBrowserDialog
+    $dlg.Description         = 'Carpeta donde se creara LAB'
+    $dlg.SelectedPath        = $controls.LabPathBox.Text.Trim().Trim('"')
+    $dlg.ShowNewFolderButton = $true
+    if ($dlg.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+        $controls.LabPathBox.Text = $dlg.SelectedPath
     }
 })
 
@@ -2516,6 +2946,7 @@ $controls.PauseBtn.Add_Click({
 # ------ Install action --------------------------------------
 $controls.InstallBtn.Add_Click({
     $opts = @{
+        Version      = $script:VortermVersion
         WorkDir      = $controls.PathBox.Text.Trim()
         Pwsh         = $true
         Git          = $true
@@ -2536,16 +2967,48 @@ $controls.InstallBtn.Add_Click({
         ClaudeCode   = $controls.cb_claude.IsChecked
         Codex        = $controls.cb_codex.IsChecked
         Antigravity  = $controls.cb_antigrav.IsChecked
+        Node         = $controls.cb_node.IsChecked
+        MultiPane    = $controls.cb_multipane.IsChecked
+        Lab          = [bool]$controls.cb_lab.IsChecked
+        LabRoot      = $controls.LabPathBox.Text.Trim().Trim('"')
+        LabAdopt     = $false
+        LabScript    = $script:LabScriptPath
         Policy       = $true
         Verify       = $true
         DryRun       = $false
+        LogFile      = New-VortermLogFile 'install'
         ThemeFile    = $script:ThemeFileName
         ThemeSrc     = $script:ThemeSrc
         ThemeJson    = $script:ThemeJson
     }
 
     if ([string]::IsNullOrWhiteSpace($opts.WorkDir)) {
-        $opts.WorkDir = Join-Path $env:USERPROFILE 'Documents'
+        $opts.WorkDir = Get-DefaultDocs
+    }
+
+    # LAB: validar ruta, permisos y LAB existente ANTES de empezar a instalar nada
+    if ($opts.Lab) {
+        if (-not $opts.LabScript -or -not (Test-Path -LiteralPath $opts.LabScript)) {
+            [System.Windows.MessageBox]::Show("No se encuentra lab\New-VortermLab.ps1 junto al instalador.`nDescarga el repositorio completo.",
+                'Vorterm - LAB', 'OK', 'Error') | Out-Null
+            return
+        }
+        try {
+            $chk = & $opts.LabScript -Root $opts.LabRoot -ValidateOnly -PassThru
+        } catch {
+            [System.Windows.MessageBox]::Show("No se pudo validar la carpeta del LAB:`n$($_.Exception.Message)", 'Vorterm - LAB', 'OK', 'Error') | Out-Null
+            return
+        }
+        if ($chk.Status -eq 'conflict') {
+            $ans = [System.Windows.MessageBox]::Show(
+                "$($chk.Errors -join "`n")`n`nAnadir SOLO los ficheros que falten? (no se sobrescribe ni se borra nada)",
+                'Vorterm - LAB ya existe', [System.Windows.MessageBoxButton]::YesNo, [System.Windows.MessageBoxImage]::Question)
+            if ($ans -ne [System.Windows.MessageBoxResult]::Yes) { return }
+            $opts.LabAdopt = $true
+        } elseif ($chk.Status -ne 'ok') {
+            [System.Windows.MessageBox]::Show(($chk.Errors -join "`n"), 'Vorterm - carpeta del LAB no valida', 'OK', 'Warning') | Out-Null
+            return
+        }
     }
 
     $controls.InstallBtn.IsEnabled = $false
@@ -2574,13 +3037,12 @@ $controls.ResetBtn.Add_Click({
     $msg = @"
 Deep terminal reset. Se hara lo siguiente (segun checkbox):
 
- - PowerShell profiles: PS5.1 + PS7, todos los hosts (Console / ISE / VSCode / profile.ps1). Restaura el ultimo backup Vorterm, o mueve a .before-reset-* y borra. Tambien limpia la cache de init de oh-my-posh.
- - PSReadLine history: borra %APPDATA%\Microsoft\Windows\PowerShell\PSReadLine\*_history.txt
- - Terminal/prompt modules: desinstala Terminal-Icons, posh-git, oh-my-posh, PSReadLine, PSColor, Pansies, PSFzf, etc. Mas el paquete winget de oh-my-posh si existe.
- - Windows Terminal settings.json: restaura el ultimo backup Vorterm. Sin backup, quita solo claves Vorterm (commandline pwsh, Nerd font, elevate, startingDirectory). Schemes / keybindings intactos.
+ - PowerShell profiles: quita SOLO el bloque Vorterm (tu contenido se conserva). Perfiles antiguos 7.0/7.1: se restaura el perfil que habia antes. Siempre deja copia .before-reset-*. Limpia la cache de init de oh-my-posh.
+ - PSReadLine history (si lo marcas): borra %APPDATA%\Microsoft\Windows\PowerShell\PSReadLine\*_history.txt
+ - Terminal modules: quita las copias de usuario de Terminal-Icons, posh-git y PSReadLine que instala Vorterm, y el paquete winget de oh-my-posh.
+ - Windows Terminal settings.json: vuelve al estado anterior a Vorterm (guardando el actual en .before-reset-*). Sin esa copia, quita solo lo de Vorterm: perfil Mosaic, atajos Vorterm, fondo/icono y claves del perfil PS7.
 
-NUNCA se tocan: Az.*, Microsoft.Graph.*, MSOnline, ExchangeOnlineManagement, MicrosoftTeams, PnP.*, Pester, PSScriptAnalyzer, SqlServer, dbatools.
-Apps que NO se desinstalan: PowerShell 7, Git, Windows Terminal, Nerd Font.
+NUNCA se tocan: otros modulos (Az, Graph, EXO, Teams, PnP, Pester...), tu carpeta LAB, ni las apps PowerShell 7, Git, Windows Terminal y Nerd Font.
 
 Continuar?
 "@

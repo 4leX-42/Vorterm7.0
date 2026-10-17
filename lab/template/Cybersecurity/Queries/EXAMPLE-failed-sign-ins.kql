@@ -1,0 +1,16 @@
+// EXAMPLE - failed sign-ins per user and IP address
+// Purpose : find accounts with many failed sign-ins in a time window (password spray, lockouts)
+// Tables  : SigninLogs (Microsoft Sentinel / Log Analytics with Entra ID diagnostic logs)
+// Params  : lookback, threshold
+// Output  : one row per user and IP over the threshold
+// Note    : read-only query; adjust ResultType codes to your environment
+let lookback = 1d;
+let threshold = 10;
+SigninLogs
+| where TimeGenerated > ago(lookback)
+| where ResultType != "0"
+| summarize Failures = count(), FirstSeen = min(TimeGenerated), LastSeen = max(TimeGenerated),
+            Apps = make_set(AppDisplayName, 5)
+          by UserPrincipalName, IPAddress, ResultType
+| where Failures >= threshold
+| order by Failures desc
