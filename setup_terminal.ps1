@@ -3284,6 +3284,9 @@ Continuar?
     [void]$ps2.BeginInvoke()
 })
 
+# Arranca maximizada (el tamano calculado arriba queda para cuando se restaura)
+$window.WindowState = [System.Windows.WindowState]::Maximized
+
 try {
     [void]$window.ShowDialog()
 } catch {
