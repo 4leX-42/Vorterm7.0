@@ -79,7 +79,7 @@ managed block automatically.
 
 ## With Claude Code Setup Guide
 
-Install Vorterm first, then the [Claude Code Setup Guide](https://github.com/4leX-42/CLAUDE_CODE-SETUP_GUIDE):
+Install Vorterm first, then the [Claude Code Setup Guide](https://github.com/4leX-42/ClaudeCode_SETUP):
 
 - Vorterm provides PowerShell 7, Git, Node.js (tick it), the execution policy and the
   terminal; the Setup Guide checks for them and does not install them again.

@@ -138,7 +138,7 @@ Details: [docs/LAB.md](docs/LAB.md).
 
 ## 🤖 Claude Code companion
 
-**[Claude Code Setup Guide](https://github.com/4leX-42/CLAUDE_CODE-SETUP_GUIDE)** is the
+**[Claude Code Setup Guide](https://github.com/4leX-42/ClaudeCode_SETUP)** is the
 official complement: Vorterm prepares the terminal (shell, fonts, Git, Node.js, execution
 policy, profile); the Setup Guide configures Claude Code on top of it (plugins, MCP
 servers, permissions, status line, second profile).
